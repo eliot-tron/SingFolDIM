@@ -1,0 +1,6 @@
+plots/
+output/
+_*
+.vscode/
+*.tar
+data/
