@@ -29,7 +29,7 @@ if __name__ == "__main__":
         type=str,
         nargs='+',
         default="MNIST",
-        choices=['MNIST', 'XOR', 'EMNIST', 'CIFAR10', 'Noise', 'Adversarial'],
+        choices=['MNIST', 'Letters', 'FashionMNIST', 'KMNIST', 'QMNIST', 'XOR', 'CIFAR10', 'Noise', 'Adversarial'],
         metavar='name',
         help="Dataset name to be used.",
     )
@@ -93,14 +93,18 @@ if __name__ == "__main__":
     print(f"Device: {device}")
 
     dataset_names = args.datasets
-    if not isinstance(dataset_names, list):
-        dataset_names = [dataset_names]
     num_samples = args.nsample
     task = args.task
     non_linearities =  args.nl
     adversarial_budget = 0
+    if not isinstance(dataset_names, list):
+        dataset_names = [dataset_names] * len(non_linearities)
+    elif len(dataset_names) == 1:
+        dataset_names = dataset_names * len(non_linearities)
     if not isinstance(non_linearities, list):
         non_linearities = [non_linearities] * len(dataset_names)
+    elif len(non_linearities) == 1:
+        non_linearities = non_linearities * len(dataset_names)
     precision_type = torch.double if args.double else torch.float
     restrict_to_class = args.restrict
     pool = "maxpool" if args.maxpool else "avgpool"
@@ -134,6 +138,9 @@ if __name__ == "__main__":
         if len(experiment_list) > 0:
             print('entering comparison')
             base_experiment = experiment_list[0]
+            base_space = None # TODO: how to do cleaner?
+            if dataset in ['Noise', 'Adversarial']:
+                base_space = deepcopy(base_experiment.input_space)
             experiment = Experiment(
                 dataset_name=dataset,
                 non_linearity=non_linearity,
@@ -141,12 +148,11 @@ if __name__ == "__main__":
                 precision_type=precision_type,
                 device=device,
                 num_samples=num_samples,
-                noise=(dataset == 'Noise'),
                 pool=pool,
                 random=args.random,
                 restrict_to_class=restrict_to_class,
+                input_space=base_space,
                 checkpoint_path=base_experiment.checkpoint_path,
-                input_space=deepcopy(base_experiment.input_space),
                 network=deepcopy(base_experiment.network),
                 network_score=deepcopy(base_experiment.network_score),
             )
@@ -159,62 +165,69 @@ if __name__ == "__main__":
                 device=device,
                 num_samples=num_samples,
                 restrict_to_class=restrict_to_class,
-                noise=(dataset == 'Noise'),
                 pool=pool,
                 random=args.random,
             )
             
         experiment_list.append(experiment)
 
+    nb_experiments = len(experiment_list)
 
     print(f'Task {task} with dataset {dataset_names} and {num_samples} samples.')
 
     if task == "compare":
         _, axes = plt.subplots()
-        colors = plt.cm.rainbow(torch.linspace(0, 1, len(experiment_list)))
+        colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
+        bp_list = []
         for i, experiment in enumerate(experiment_list):
-            experiment.plot_FIM_eigenvalues(axes, known_rank=9, edge_color=colors[i])
+            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=9, edge_color=colors[i], positions=torch.arange(0, 10) + (i / nb_experiments), box_width=1 / (nb_experiments + 1))
+            bp_list.append(bp)
         #  axes.set_yscale('log')
+        axes.set_xticks(torch.arange(10) + ((nb_experiments - 1) / nb_experiments) / 2, [r"$\lambda_{(" + str(i) + r")}$" for i in range(1, 11)])
+        axes.set_ylabel(r"$\log_{10}$ of the eigenvalue")
+        axes.set_xlabel("FIM's eigenvalues in decreasing order")
+        plt.legend([bp['boxes'][0] for bp in bp_list], [exp.dataset_name for exp in experiment_list])
+
         plt.show()
         
 
-    elif task == 'rank2D':
-        plot.save_function_neighborhood(
-            geo_model,
-            input_points,
-            function='rank',
-            steps=10,
-            plot_range=1.,
-        )
-    elif task == 'proba2D':
-        plot.save_function_neighborhood(
-            geo_model,
-            input_points,
-            function='proba',
-            steps=50,
-            plot_range=10,
-        )
+    # elif task == 'rank2D':
+    #     plot.save_function_neighborhood(
+    #         geo_model,
+    #         input_points,
+    #         function='rank',
+    #         steps=10,
+    #         plot_range=1.,
+    #     )
+    # elif task == 'proba2D':
+    #     plot.save_function_neighborhood(
+    #         geo_model,
+    #         input_points,
+    #         function='proba',
+    #         steps=50,
+    #         plot_range=10,
+    #     )
 
-    elif task == 'trace2D':
-        plot.save_function_neighborhood(
-            geo_model,
-            input_points,
-            function='trace',
-            steps=10,
-            plot_range=10,
-        )
+    # elif task == 'trace2D':
+    #     plot.save_function_neighborhood(
+    #         geo_model,
+    #         input_points,
+    #         function='trace',
+    #         steps=10,
+    #         plot_range=10,
+    #     )
 
-    elif task == 'gradproba':
-        # jac_probas = geo_model.jac_proba(input_points)
-        # grad_norms = jac_probas.norm(p=2, dim=-1, keepdim=True)
-        # jac_normalized = jac_probas / grad_norms
-        plot.save_function_neighborhood(
-            geo_model,
-            input_points,
-            function='gradproba',
-            steps=10,
-            plot_range=10,
-        )
-        print('wait')
+    # elif task == 'gradproba':
+    #     # jac_probas = geo_model.jac_proba(input_points)
+    #     # grad_norms = jac_probas.norm(p=2, dim=-1, keepdim=True)
+    #     # jac_normalized = jac_probas / grad_norms
+    #     plot.save_function_neighborhood(
+    #         geo_model,
+    #         input_points,
+    #         function='gradproba',
+    #         steps=10,
+    #         plot_range=10,
+    #     )
+    #     print('wait')
 
     print("Done.")

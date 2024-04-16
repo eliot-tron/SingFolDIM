@@ -1,4 +1,5 @@
 from os import makedirs, path
+import time
 from pathlib import Path
 from typing import Optional, Union
 from torch import nn
@@ -25,12 +26,11 @@ class Experiment(object):
                  precision_type: torch.dtype,
                  device: torch.DeviceObjType,
                  num_samples: int,
-                 noise: bool,
                  pool: str,
                  random: bool,
                  restrict_to_class: Optional[int]=None,
-                 checkpoint_path: Optional[str]=None,
                  input_space: Optional[datasets.VisionDataset]=None,
+                 checkpoint_path: Optional[str]=None,
                  network: Optional[nn.Module]=None,
                  network_score: Optional[nn.Module]=None,
                  ):
@@ -45,7 +45,6 @@ class Experiment(object):
         self.device = device
         self.num_samples = num_samples
         self.restrict_to_class = restrict_to_class
-        self.noise = noise
         self.pool = pool
         self.input_space = input_space
         self.random = random
@@ -107,6 +106,8 @@ class Experiment(object):
                 self.checkpoint_path = './checkpoint/xor_net_relu_30.pt'
             elif self.non_linearity == 'GELU':
                 self.checkpoint_path = './checkpoint/xor_net_relu_30.pt'
+        else:
+            raise NotImplementedError(f"{self.dataset_name} cannot be a base dataset yet.")
 
     def init_input_space(self,
                          root: str='data',
@@ -132,12 +133,33 @@ class Experiment(object):
                 download=download,
                 transform=transforms.Compose([transforms.ToTensor()]),
             )
-        elif self.dataset_name == 'EMNIST-letters':
+        elif self.dataset_name == 'Letters':
             self.input_space = datasets.EMNIST(
                 root,
                 train=train,
                 download=download,
                 split="letters",
+                transform=transforms.Compose([transforms.ToTensor()]),
+            )
+        elif self.dataset_name == 'FashionMNIST':
+            self.input_space = datasets.FashionMNIST(
+                root,
+                train=train,
+                download=download,
+                transform=transforms.Compose([transforms.ToTensor()]),
+            )
+        elif self.dataset_name == 'KMNIST':
+            self.input_space = datasets.KMNIST(
+                root,
+                train=train,
+                download=download,
+                transform=transforms.Compose([transforms.ToTensor()]),
+            )
+        elif self.dataset_name == 'QMNIST':
+            self.input_space = datasets.QMNIST(
+                root,
+                train=train,
+                download=download,
                 transform=transforms.Compose([transforms.ToTensor()]),
             )
         elif self.dataset_name == 'CIFAR10':
@@ -157,10 +179,10 @@ class Experiment(object):
                 nsample=10000,
                 discrete=False,
             )
-        elif self.dataset_name == 'Noise':
-            raise NotImplementedError("Noise cannot be a base dataset yet.")
-        elif self.dataset_name == 'Adversarial':
-            raise ValueError("Adversarial cannot be a base dataset.")
+        elif self.dataset_name in ['Noise', 'Adversarial']:
+            raise ValueError(f"{self.dataset_name} cannot be a base dataset.")
+        else:
+            raise NotImplementedError(f"{self.dataset_name} cannot be a base dataset yet.")
 
         if self.restrict_to_class is not None:
             restriction_indices = self.input_space.targets == self.restrict_to_class
@@ -187,8 +209,8 @@ class Experiment(object):
         self.input_points = torch.stack([self.input_space[idx][0] for idx in indices])
         self.input_points = self.input_points.to(self.device).to(self.precision_type)
         
-        if self.noise:
-            self.input_points = torch.cat([self.input_points, torch.rand_like(self.input_points).to(self.device).to(self.precision_type)], dim=0)
+        if self.dataset_name == "Noise":
+            self.input_points = torch.rand_like(self.input_points).to(self.device).to(self.precision_type)
         if self.adversarial_budget > 0:
             print("Computing the adversarial attacks...")
             adversary = AutoAttack(self.network_score.float(), norm='L2', eps=self.adversarial_budget, version='custom', attacks_to_run=['apgd-ce'], device=self.device, verbose=False)
@@ -207,7 +229,7 @@ class Experiment(object):
 
         """
         maxpool = (self.pool == 'maxpool')
-        if self.dataset_name in ['MNIST', 'EMNIST']:
+        if self.dataset_name == 'MNIST':
             self.network = mnist_networks.medium_cnn(self.checkpoint_path, non_linearity=self.nl_function, maxpool=maxpool)
             self.network_score = mnist_networks.medium_cnn(
                 self.checkpoint_path, score=True, non_linearity=self.nl_function, maxpool=maxpool)
@@ -239,6 +261,8 @@ class Experiment(object):
         singular_values: bool=False,
         known_rank: Optional[int]=None,
         edge_color: Optional[str]=None,
+        positions: Optional[list[float]]=None,
+        box_width: float=1,
     ) -> None:
         """Plot the mean ordered eigenvalues of the Fisher Information Matrix, also called the Local Data Matrix."""
 
@@ -251,26 +275,37 @@ class Experiment(object):
 
         if known_rank is None:
             known_rank = min(local_data_matrix.shape[1:])
+            
+        if edge_color is None:
+            edge_color = 'black'
+
+        if positions is None:
+            positions = range(known_rank + 1)
 
         # TODO: implement a faster computation of the topk eigenvalues <15-04-24, eliot> #
         if singular_values:
             eigenvalues = torch.linalg.svdvals(local_data_matrix)
         else:
-            eigenvalues = torch.linalg.eigvalsh(local_data_matrix) 
+            with torch.no_grad():
+                # t0 = time.time()
+                eigenvalues = torch.linalg.eigvalsh(local_data_matrix) 
+                # t1 = time.time()
+                topk_eigenvalues = torch.lobpcg(local_data_matrix, k=known_rank+1)[0]
+            # t2 = time.time()
+            # print(f"All: {t1-t0}s, topk: {t2-t1}s.")
+
+        selected_eigenvalues = topk_eigenvalues.abs().sort(descending=True).values
+        # selected_eigenvalues = eigenvalues.abs().sort(descending=True).values[...,:known_rank + 1]
+        # print(f"All close: {torch.allclose(topk_eigenvalues, selected_eigenvalues[...,:known_rank])}")
     #  max_eigenvalues = eigenvalues.max(dim=-1, keepdims=True).values
     #  eigenvalues = eigenvalues / max_eigenvalues
-        #  oredered_list_eigenvalues = list(eigenvalues.abs().sort(descending=True).values[...,:known_rank + 1].movedim(-1, 0).detach()) 
-        oredered_list_eigenvalues = list(eigenvalues.abs().sort(descending=True).values[...,:known_rank + 1].log10().movedim(-1, 0).detach())  # TODO: log after or before mean? <15-04-24, eliot> #
+        oredered_list_eigenvalues = list(selected_eigenvalues.log10().movedim(-1, 0).detach())  # TODO: log after or before mean? <15-04-24, eliot> #
 
-        boxplot = axes.boxplot(oredered_list_eigenvalues,)
-                               #  boxprops=dict(facecolor=edge_color, color=edge_color),
-                                #  capprops=dict(color=edge_color),
-                                #  whiskerprops=dict(color=edge_color),
-                                #  flierprops=dict(color=edge_color, markeredgecolor=edge_color),
-                                #  medianprops=dict(color=edge_color),
-                               #  )
-        for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
-            plt.setp(boxplot[element], color=edge_color)
+        boxplot = axes.boxplot(oredered_list_eigenvalues, positions=positions, widths=box_width, patch_artist=True, boxprops=dict(facecolor=edge_color))
+        # for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
+        #     plt.setp(boxplot[element], color=edge_color)
+        
+        return boxplot
 
 #  def box_plot(data, edge_color, fill_color):
     #  bp = ax.boxplot(data, patch_artist=True)
