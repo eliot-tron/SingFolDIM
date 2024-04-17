@@ -63,6 +63,12 @@ class Experiment(object):
         self.init_geo_model()
 
 
+    def get_output_dimension(self):
+        return self.network(self.input_points[0].unsqueeze(0)).shape[-1]
+    
+    def get_number_of_classes(self):
+        return len(self.input_space.classes)
+
     def init_geo_model(self):
         """TODO: Docstring for init_geo_model.
 

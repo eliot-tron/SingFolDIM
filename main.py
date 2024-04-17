@@ -13,6 +13,7 @@ from geometry import GeometricModel
 from experiment import Experiment
 
 import mnist_networks, cifar10_networks
+from transfer_learning import transfer_learning
 
 from torchvision import datasets, transforms
 from xor_datasets import XorDataset
@@ -171,6 +172,8 @@ if __name__ == "__main__":
             
         experiment_list.append(experiment)
 
+    base_output_dimension = base_experiment.get_output_dimension()
+    
     nb_experiments = len(experiment_list)
 
     print(f'Task {task} with dataset {dataset_names} and {num_samples} samples.')
@@ -180,15 +183,24 @@ if __name__ == "__main__":
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
         for i, experiment in enumerate(experiment_list):
-            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=9, edge_color=colors[i], positions=torch.arange(0, 10) + (i / nb_experiments), box_width=1 / (nb_experiments + 1))
+            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=base_output_dimension - 1, edge_color=colors[i], positions=torch.arange(0, base_output_dimension) + (i / nb_experiments), box_width=1 / (nb_experiments + 1))
             bp_list.append(bp)
         #  axes.set_yscale('log')
-        axes.set_xticks(torch.arange(10) + ((nb_experiments - 1) / nb_experiments) / 2, [r"$\lambda_{(" + str(i) + r")}$" for i in range(1, 11)])
+        axes.set_xticks(torch.arange(base_output_dimension) + ((nb_experiments - 1) / nb_experiments) / 2, [r"$\lambda_{(" + str(i) + r")}$" for i in range(1, base_output_dimension + 1)])
         axes.set_ylabel(r"$\log_{10}$ of the eigenvalue")
         axes.set_xlabel("FIM's eigenvalues in decreasing order")
         plt.legend([bp['boxes'][0] for bp in bp_list], [exp.dataset_name for exp in experiment_list])
 
         plt.show()
+    
+    if task == "transfer":
+        for i, experiment in enumerate(experiment_list[1:]):
+            tl = transfer_learning(
+                base_model=base_experiment.network,
+                target_test_dataset=experiment.input_space,
+                target_train_dataset=experiment.input_space, # TODO: implement this
+            )
+            tl.train_new_model(output_dir=savedirectory)
         
 
     # elif task == 'rank2D':
