@@ -201,10 +201,10 @@ if __name__ == "__main__":
         base_experiment.save_info_to_txt(savedirectory)
         for i, experiment in enumerate(experiment_list[1:]):
             tl = TransferLearning(
-                base_model=base_experiment.network,
-                target_datasets=experiment.input_space,
+                base_experiment=base_experiment,
+                target_experiment=experiment,
             )
-            _, loss_dict, acc_dict = tl.train_new_model(output_dir=savedirectory, num_epochs=2)
+            _, loss_dict, acc_dict = tl.train_new_model(output_dir=savedirectory, num_epochs=30)
 
             line_styles = {x: ls for x, ls in zip(loss_dict.keys(), ['-', '--'])}
             for key, loss in loss_dict.items():

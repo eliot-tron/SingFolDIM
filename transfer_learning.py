@@ -6,6 +6,8 @@ from torch import nn
 import torch
 from torchvision import datasets
 
+from experiment import Experiment
+
 
 class TransferLearning(object):
     
@@ -14,8 +16,8 @@ class TransferLearning(object):
     """
 
     def __init__(self,
-                 base_model: nn.Module,
-                 target_datasets: Dict[str, datasets.VisionDataset],
+                 base_experiment: Experiment, # # TODO: gérer les args <18-04-24, eliot> #
+                 target_experiment: Experiment,
                  ):
         """Initialize the transfer learning class.
 
@@ -23,8 +25,10 @@ class TransferLearning(object):
             base_model (nn.Module): logit model.
             target_datasets (Dict[datasets.VisionDataset]): target datasets ('train' and 'val') for the new task.
         """
-        self.base_model = base_model
-        self.target_datasets = target_datasets
+        self.base_experiment = base_experiment
+        self.target_experiment = target_experiment
+        self.base_model = base_experiment.network
+        self.target_datasets = target_experiment.input_space
         self.number_of_class = len(self.target_datasets['train'].classes)
         self.new_model = None
         self.index_new_layer = None
@@ -39,7 +43,7 @@ class TransferLearning(object):
 
     
     def save_info_to_txt(self, save_directory: str):
-        saving_path = os.path.join(save_directory, f"experiment_{self.dataset_name}_info.txt")
+        saving_path = os.path.join(save_directory, f"experiment_base={self.base_experiment.dataset_name}_target={self.target_experiment.dataset_name}_info.txt")
         with open(saving_path, 'w') as file:
             file.write(str(self))
 
@@ -173,7 +177,7 @@ class TransferLearning(object):
                 epoch_loss = running_loss / dataset_sizes[phase]
                 loss_list[phase].append(epoch_loss)
                 epoch_acc = running_corrects.double() / dataset_sizes[phase]
-                acc_list[phase].append(epoch_acc)
+                acc_list[phase].append(epoch_acc.cpu())
 
                 print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
