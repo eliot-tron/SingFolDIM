@@ -202,8 +202,7 @@ if __name__ == "__main__":
         for i, experiment in enumerate(experiment_list[1:]):
             tl = TransferLearning(
                 base_model=base_experiment.network,
-                target_test_dataset=experiment.input_space,
-                target_train_dataset=experiment.input_space, # TODO: implement this
+                target_datasets=experiment.input_space,
             )
             _, loss_dict, acc_dict = tl.train_new_model(output_dir=savedirectory, num_epochs=2)
 
