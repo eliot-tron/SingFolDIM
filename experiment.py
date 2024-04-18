@@ -278,8 +278,8 @@ class Experiment(object):
 
         if torch.cuda.device_count() > 1 and self.device.type == 'cuda':
             print(f"Let's use {torch.cuda.device_count()} GPUs!")
-            self.network = nn.DataParallel(self.network)
-            self.network_score = nn.DataParallel(self.network_score)
+            # self.network = nn.DataParallel(self.network)
+            # self.network_score = nn.DataParallel(self.network_score)
 
         print(f"network to {self.device} as {self.precision_type} done")
 

@@ -49,6 +49,12 @@ class TransferLearning(object):
         fix_other_layers: bool=True
     ) -> None: 
         self.new_model = deepcopy(self.base_model)
+
+        # if isinstance(self.new_model, nn.DataParallel):
+        #     model = self.new_model.module
+        # else:
+        #     model = self.new_model
+
         if isinstance(self.new_model, nn.Sequential):
             index_last_linear_layer = None
             for i, layer in enumerate(self.new_model):
@@ -64,6 +70,8 @@ class TransferLearning(object):
                 device=last_linear_layer.weight.device,
                 dtype=last_linear_layer.weight.dtype,
             )
+        else:
+            raise NotImplementedError(f"TransferLearning only implemented for torch.nn.Sequential, and not for \n{self.new_model}")
         
         # TODO: device + dtype
         self.index_new_layer = index_last_linear_layer
@@ -80,6 +88,11 @@ class TransferLearning(object):
         
         if self.new_model is None:
             self.init_new_model(fix_other_layers=fix_other_layers)
+
+        # if isinstance(self.new_model, nn.DataParallel): #TODO: mieux gérer ça
+        #     model = self.new_model.module
+        # else:
+        #     model = self.new_model
 
         if isinstance(self.new_model, nn.Sequential) and isinstance(self.new_model[-1], nn.LogSoftmax):
             criterion = nn.NLLLoss()
