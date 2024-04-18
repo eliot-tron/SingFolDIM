@@ -29,7 +29,7 @@ class Experiment(object):
                  pool: str,
                  random: bool,
                  restrict_to_class: Optional[int]=None,
-                 input_space: Optional[Dict[datasets.VisionDataset]]=None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]]=None,
                  checkpoint_path: Optional[str]=None,
                  network: Optional[nn.Module]=None,
                  network_score: Optional[nn.Module]=None,

@@ -15,7 +15,7 @@ class TransferLearning(object):
 
     def __init__(self,
                  base_model: nn.Module,
-                 target_datasets: Dict[datasets.VisionDataset],
+                 target_datasets: Dict[str, datasets.VisionDataset],
                  ):
         """Initialize the transfer learning class.
 
