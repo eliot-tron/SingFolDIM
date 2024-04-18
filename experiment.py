@@ -61,6 +61,21 @@ class Experiment(object):
             self.init_input_space()
         self.init_input_points()
         self.init_geo_model()
+    
+    
+    def __str__(self) -> str:
+        title = "Experiment object"
+        variables = ""
+        for key, var in vars(self).items():
+            variables += f"- {key}: {var}\n"
+        n_dash = (len(title) - len('variables')) // 2
+        return title + '\n' + '-' * n_dash + 'variables' + '-' * n_dash + '\n' + variables
+    
+    
+    def save_info_to_txt(self, save_directory: str):
+        saving_path = path.join(save_directory, f"experiment_{self.dataset_name}_info.txt")
+        with open(saving_path, 'w') as file:
+            file.write(str(self))
 
 
     def get_output_dimension(self):
@@ -266,7 +281,7 @@ class Experiment(object):
         output_name: Optional[str]=None,
         singular_values: bool=False,
         known_rank: Optional[int]=None,
-        edge_color: Optional[str]=None,
+        face_color: Optional[str]=None,
         positions: Optional[list[float]]=None,
         box_width: float=1,
     ) -> None:
@@ -282,8 +297,8 @@ class Experiment(object):
         if known_rank is None:
             known_rank = min(local_data_matrix.shape[1:])
             
-        if edge_color is None:
-            edge_color = 'black'
+        if face_color is None:
+            face_color = 'white'
 
         if positions is None:
             positions = range(known_rank + 1)
@@ -294,7 +309,7 @@ class Experiment(object):
         else:
             with torch.no_grad():
                 # t0 = time.time()
-                eigenvalues = torch.linalg.eigvalsh(local_data_matrix) 
+                # eigenvalues = torch.linalg.eigvalsh(local_data_matrix) 
                 # t1 = time.time()
                 topk_eigenvalues = torch.lobpcg(local_data_matrix, k=known_rank+1)[0]
             # t2 = time.time()
@@ -307,7 +322,15 @@ class Experiment(object):
     #  eigenvalues = eigenvalues / max_eigenvalues
         oredered_list_eigenvalues = list(selected_eigenvalues.log10().movedim(-1, 0).detach())  # TODO: log after or before mean? <15-04-24, eliot> #
 
-        boxplot = axes.boxplot(oredered_list_eigenvalues, positions=positions, widths=box_width, patch_artist=True, boxprops=dict(facecolor=edge_color))
+        boxplot = axes.boxplot(oredered_list_eigenvalues,
+                               positions=positions,
+                               widths=box_width,
+                               patch_artist=True,
+                               boxprops=dict(facecolor=face_color),
+                               medianprops=dict(color='black'),
+                               meanprops=dict(markeredgecolor='black', markerfacecolor=face_color),
+                               showmeans=True
+                               )
         # for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
         #     plt.setp(boxplot[element], color=edge_color)
         

@@ -13,7 +13,7 @@ from geometry import GeometricModel
 from experiment import Experiment
 
 import mnist_networks, cifar10_networks
-from transfer_learning import transfer_learning
+from transfer_learning import TransferLearning
 
 from torchvision import datasets, transforms
 from xor_datasets import XorDataset
@@ -183,24 +183,47 @@ if __name__ == "__main__":
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
         for i, experiment in enumerate(experiment_list):
-            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=base_output_dimension - 1, edge_color=colors[i], positions=torch.arange(0, base_output_dimension) + (i / nb_experiments), box_width=1 / (nb_experiments + 1))
+            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=base_output_dimension - 1, face_color=colors[i], positions=torch.arange(0, base_output_dimension) + (i / nb_experiments), box_width=1 / (nb_experiments + 1))
             bp_list.append(bp)
+            experiment.save_info_to_txt(savedirectory)
         #  axes.set_yscale('log')
         axes.set_xticks(torch.arange(base_output_dimension) + ((nb_experiments - 1) / nb_experiments) / 2, [r"$\lambda_{(" + str(i) + r")}$" for i in range(1, base_output_dimension + 1)])
         axes.set_ylabel(r"$\log_{10}$ of the eigenvalue")
         axes.set_xlabel("FIM's eigenvalues in decreasing order")
         plt.legend([bp['boxes'][0] for bp in bp_list], [exp.dataset_name for exp in experiment_list])
 
-        plt.show()
+        saving_path = savedirectory + 'eigenvalues_comparison.pdf'
+        plt.savefig(saving_path, transparent=True, dpi=None)
     
     if task == "transfer":
+        _, axes = plt.subplots(1, 2)
+        colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
+        base_experiment.save_info_to_txt(savedirectory)
         for i, experiment in enumerate(experiment_list[1:]):
-            tl = transfer_learning(
+            tl = TransferLearning(
                 base_model=base_experiment.network,
                 target_test_dataset=experiment.input_space,
                 target_train_dataset=experiment.input_space, # TODO: implement this
             )
-            tl.train_new_model(output_dir=savedirectory)
+            _, loss_dict, acc_dict = tl.train_new_model(output_dir=savedirectory, num_epochs=30)
+
+            line_styles = {x: ls for x, ls in zip(loss_dict.keys(), ['-', '--'])}
+            for key, loss in loss_dict.items():
+                axes[0].plot(loss, label=f"{key} for {experiment.dataset_name}", linestyle=line_styles[key], color=colors[i])
+            for key, acc in acc_dict.items():
+                axes[1].plot(acc, label=f"{key} for {experiment.dataset_name}", linestyle=line_styles[key], color=colors[i])
+            tl.save_info_to_txt(savedirectory)
+            experiment.save_info_to_txt(savedirectory)
+        
+            
+        axes[0].set_ylabel("Loss")
+        axes[1].set_ylabel("Accuracy")
+            
+        for ax in axes:
+            ax.set_xlabel("Epochs")
+            ax.legend()
+        saving_path = savedirectory + 'loss_and_acc.pdf'
+        plt.savefig(saving_path, transparent=True, dpi=None)
         
 
     # elif task == 'rank2D':

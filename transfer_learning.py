@@ -6,7 +6,7 @@ import torch
 from torchvision import datasets
 
 
-class transfer_learning(object):
+class TransferLearning(object):
     
     """Class for doing transfer learning from one model train on a dataset
     to another dataset. Also includes some performance metrics.
@@ -30,6 +30,21 @@ class transfer_learning(object):
         self.new_model = None
         self.index_new_layer = None
     
+    def __str__(self) -> str:
+        title = "TransferLearning object"
+        variables = ""
+        for key, var in vars(self).items():
+            variables += f"- {key}: {var}\n"
+        n_dash = (len(title) - len('variables')) // 2
+        return title + '\n' + '-' * n_dash + 'variables' + '-' * n_dash + '\n' + variables
+
+    
+    def save_info_to_txt(self, save_directory: str):
+        saving_path = os.path.join(save_directory, f"experiment_{self.dataset_name}_info.txt")
+        with open(saving_path, 'w') as file:
+            file.write(str(self))
+
+
     def init_new_model(
         self,
         fix_other_layers: bool=True
@@ -67,7 +82,10 @@ class transfer_learning(object):
         if self.new_model is None:
             self.init_new_model(fix_other_layers=fix_other_layers)
 
-        criterion = nn.CrossEntropyLoss() # TODO: or nll ?
+        if isinstance(self.new_model, nn.Sequential) and isinstance(self.new_model[-1], nn.LogSoftmax):
+            criterion = nn.NLLLoss()
+        else:
+            criterion = nn.CrossEntropyLoss()
 
         optimizer_function = lambda parameters: torch.optim.SGD(parameters, lr=lr_start, momentum=0.9)
         if fix_other_layers:
