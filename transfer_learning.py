@@ -1,6 +1,7 @@
 from copy import deepcopy
 import os
 import time
+from typing import Dict
 from torch import nn
 import torch
 from torchvision import datasets
@@ -14,19 +15,17 @@ class TransferLearning(object):
 
     def __init__(self,
                  base_model: nn.Module,
-                 target_train_dataset: datasets.VisionDataset,
-                 target_test_dataset: datasets.VisionDataset,
+                 target_datasets: Dict[datasets.VisionDataset],
                  ):
         """Initialize the transfer learning class.
 
         Args:
             base_model (nn.Module): logit model.
-            target_dataset (datasets.VisionDataset): target dataset for the new task.
+            target_datasets (Dict[datasets.VisionDataset]): target datasets ('train' and 'val') for the new task.
         """
         self.base_model = base_model
-        self.target_train_dataset = target_train_dataset
-        self.target_test_dataset = target_test_dataset
-        self.number_of_class = len(self.target_train_dataset.classes)
+        self.target_datasets = target_datasets
+        self.number_of_class = len(self.target_datasets['train'].classes)
         self.new_model = None
         self.index_new_layer = None
     
@@ -102,12 +101,11 @@ class TransferLearning(object):
         torch.save(self.new_model.state_dict(), best_model_params_path)
         best_acc = 0.0
 
-        image_datasets = {'train': self.target_train_dataset, 'val': self.target_test_dataset}
-        dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x],
+        dataloaders = {x: torch.utils.data.DataLoader(self.target_datasets[x],
                                                       batch_size=batch_size,
                                                       shuffle=True,
                                                       num_workers=num_workers) for x in ['train', 'val']}
-        dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
+        dataset_sizes = {x: len(self.target_datasets[x]) for x in ['train', 'val']}
 
         # Decay LR by a factor of 0.1 every 7 epochs
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)

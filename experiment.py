@@ -1,7 +1,7 @@
 from os import makedirs, path
 import time
 from pathlib import Path
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 from torch import nn
 import torch
 from matplotlib import pyplot as plt
@@ -29,7 +29,7 @@ class Experiment(object):
                  pool: str,
                  random: bool,
                  restrict_to_class: Optional[int]=None,
-                 input_space: Optional[datasets.VisionDataset]=None,
+                 input_space: Optional[Dict[datasets.VisionDataset]]=None,
                  checkpoint_path: Optional[str]=None,
                  network: Optional[nn.Module]=None,
                  network_score: Optional[nn.Module]=None,
@@ -82,7 +82,7 @@ class Experiment(object):
         return self.network(self.input_points[0].unsqueeze(0)).shape[-1]
     
     def get_number_of_classes(self):
-        return len(self.input_space.classes)
+        return len(self.input_space['train'].classes)
 
     def init_geo_model(self):
         """TODO: Docstring for init_geo_model.
@@ -148,86 +148,96 @@ class Experiment(object):
 
         """
         if self.dataset_name == 'MNIST':
-            self.input_space = datasets.MNIST(
+            self.input_space = {x: datasets.MNIST(
                 root,
-                train=train,
+                train=(x=='train'),
                 download=download,
                 transform=transforms.Compose([transforms.ToTensor()]),
-            )
+            ) for x in ['train', 'val']
+            }
         elif self.dataset_name == 'Letters':
-            self.input_space = datasets.EMNIST(
+            self.input_space = {x: datasets.EMNIST(
                 root,
-                train=train,
+                train=(x=='train'),
                 download=download,
                 split="letters",
                 transform=transforms.Compose([transforms.ToTensor()]),
-            )
+            ) for x in ['train', 'val']
+            }
         elif self.dataset_name == 'FashionMNIST':
-            self.input_space = datasets.FashionMNIST(
+            self.input_space = {x: datasets.FashionMNIST(
                 root,
-                train=train,
+                train=(x=='train'),
                 download=download,
                 transform=transforms.Compose([transforms.ToTensor()]),
-            )
+            ) for x in ['train', 'val']
+            }
         elif self.dataset_name == 'KMNIST':
-            self.input_space = datasets.KMNIST(
+            self.input_space = {x: datasets.KMNIST(
                 root,
-                train=train,
+                train=(x=='train'),
                 download=download,
                 transform=transforms.Compose([transforms.ToTensor()]),
-            )
+            ) for x in ['train', 'val']
+            }
         elif self.dataset_name == 'QMNIST':
-            self.input_space = datasets.QMNIST(
+            self.input_space = {x: datasets.QMNIST(
                 root,
-                train=train,
+                train=(x=='train'),
                 download=download,
                 transform=transforms.Compose([transforms.ToTensor()]),
-            )
+            ) for x in ['train', 'val']
+            }
         elif self.dataset_name == 'CIFAR10':
             transform = transforms.Compose(
                 [transforms.ToTensor(),
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                 ])
 
-            self.input_space = datasets.CIFAR10(
+            self.input_space = {x: datasets.CIFAR10(
                 root,
-                train=train,
+                train=(x=='train'),
                 download=download,
                 transform=transform,
-            )
+            ) for x in ['train', 'val']
+            }
         elif self.dataset_name == 'XOR':
-            input_space = XorDataset(
+            self.input_space = {x: XorDataset(
                 nsample=10000,
+                test=(x=='val'),
                 discrete=False,
-            )
+            ) for x in ['train', 'val']
+            }
         elif self.dataset_name in ['Noise', 'Adversarial']:
             raise ValueError(f"{self.dataset_name} cannot be a base dataset.")
         else:
             raise NotImplementedError(f"{self.dataset_name} cannot be a base dataset yet.")
 
         if self.restrict_to_class is not None:
-            restriction_indices = self.input_space.targets == self.restrict_to_class
-            self.input_space.targets = self.input_space.targets[restriction_indices]
-            self.input_space.data = self.input_space.data[restriction_indices]
+            for input_space_train_or_val in self.input_space:
+                restriction_indices = input_space_train_or_val.targets == self.restrict_to_class
+                input_space_train_or_val.targets = input_space_train_or_val.targets[restriction_indices]
+                input_space_train_or_val.data = input_space_train_or_val.data[restriction_indices]
 
-    def init_input_points(self):
+    def init_input_points(self, train:bool=True):
         """TODO: Docstring for init_input_points.
 
         :returns: TODO
 
         """
         print(f"Loading {self.num_samples} samples...")
+        input_space_train_or_val = self.input_space['train' if train else 'val']
 
-        if self.num_samples > len(self.input_space):
+        if self.num_samples > len(input_space_train_or_val):
             print(
-                f'WARNING: you are trying to get more samples ({self.num_samples}) than the number of data in the test set ({len(self.input_space)})')
+                f'WARNING: you are trying to get more samples ({self.num_samples}) than the number of data in the test set ({len(input_space_train_or_val)})')
 
         if self.random:
-            indices = torch.randperm(len(self.input_space))[:self.num_samples]
+            indices = torch.randperm(len(input_space_train_or_val))[:self.num_samples]
         else:
             indices = range(self.num_samples)
 
-        self.input_points = torch.stack([self.input_space[idx][0] for idx in indices])
+        self.input_points = torch.stack([input_space_train_or_val[idx][0] for idx in indices])
         self.input_points = self.input_points.to(self.device).to(self.precision_type)
         
         if self.dataset_name == "Noise":
@@ -278,7 +288,6 @@ class Experiment(object):
         self,
         axes,
         output_dir: Union[str, Path]='output/',
-        output_name: Optional[str]=None,
         singular_values: bool=False,
         known_rank: Optional[int]=None,
         face_color: Optional[str]=None,
@@ -320,7 +329,9 @@ class Experiment(object):
         # print(f"All close: {torch.allclose(topk_eigenvalues, selected_eigenvalues[...,:known_rank])}")
     #  max_eigenvalues = eigenvalues.max(dim=-1, keepdims=True).values
     #  eigenvalues = eigenvalues / max_eigenvalues
-        oredered_list_eigenvalues = list(selected_eigenvalues.log10().movedim(-1, 0).detach())  # TODO: log after or before mean? <15-04-24, eliot> #
+        oredered_list_eigenvalues = list(selected_eigenvalues.log10().movedim(-1, 0).detach().cpu())  # TODO: log after or before mean? <15-04-24, eliot> #
+
+        torch.save(oredered_list_eigenvalues, path.join(output_dir, f"experiment_{self.dataset_name}_orderd_list_eigenvalues.pt"))
 
         boxplot = axes.boxplot(oredered_list_eigenvalues,
                                positions=positions,

@@ -183,7 +183,7 @@ if __name__ == "__main__":
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
         for i, experiment in enumerate(experiment_list):
-            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=base_output_dimension - 1, face_color=colors[i], positions=torch.arange(0, base_output_dimension) + (i / nb_experiments), box_width=1 / (nb_experiments + 1))
+            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=base_output_dimension - 1, face_color=colors[i], positions=torch.arange(0, base_output_dimension) + (i / nb_experiments), box_width=1 / (nb_experiments + 1), output_dir=savedirectory)
             bp_list.append(bp)
             experiment.save_info_to_txt(savedirectory)
         #  axes.set_yscale('log')
@@ -205,7 +205,7 @@ if __name__ == "__main__":
                 target_test_dataset=experiment.input_space,
                 target_train_dataset=experiment.input_space, # TODO: implement this
             )
-            _, loss_dict, acc_dict = tl.train_new_model(output_dir=savedirectory, num_epochs=30)
+            _, loss_dict, acc_dict = tl.train_new_model(output_dir=savedirectory, num_epochs=2)
 
             line_styles = {x: ls for x, ls in zip(loss_dict.keys(), ['-', '--'])}
             for key, loss in loss_dict.items():
