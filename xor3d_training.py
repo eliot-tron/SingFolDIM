@@ -12,8 +12,8 @@ from torch import optim
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 
-from xor_datasets import XorDataset
-from xor_networks import xor_net, xor_net_old
+from xor3d_datasets import Xor3dDataset
+from xor3d_networks import xor3d_net
 
 
 def train_epoch(
@@ -70,8 +70,8 @@ def test(model: nn.Module, loader: DataLoader) -> float:
     return test_loss
 
 
-def xor_loader(batch_size: int, train: bool) -> DataLoader:
-    dataset = XorDataset(nsample=100000, test=not train, discrete=False)
+def xor3d_loader(batch_size: int, train: bool) -> DataLoader:
+    dataset = Xor3dDataset(nsample=100000, test=not train, discrete=False)
     loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
@@ -84,7 +84,7 @@ def xor_loader(batch_size: int, train: bool) -> DataLoader:
 
 
 def exemplar_batch(batch_size: int, train: bool) -> torch.Tensor:
-    dataset = XorDataset()
+    dataset = Xor3dDataset()
     examples = []
     for i in range(batch_size):
         examples.append(dataset[i][0])
@@ -94,14 +94,14 @@ def exemplar_batch(batch_size: int, train: bool) -> torch.Tensor:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train a basic model on XOR",
-        usage="python3 xor_training.py [--batch-size BATCH-SIZE "
+        description="Train a basic model on 3D XOR",
+        usage="python3 xor3d_training.py [--batch-size BATCH-SIZE "
         "--epochs EPOCHS --lr LR --seed SEED --output-dir OUTPUT-DIR]",
     )
     parser.add_argument("--batch-size", type=int, default=50, help="Batch size")
     parser.add_argument("--epochs", type=int, default=30, help="Number of epochs")
     parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
-    parser.add_argument("--activation", type=str, default="sigmoid", help="Activation function [sigmoid|relu|gelu]")
+    parser.add_argument("--activation", type=str, default="sigmoid", help="Activation function [sigmoid|relu]")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument(
         "--output-dir",
@@ -109,12 +109,6 @@ if __name__ == "__main__":
         default="checkpoint",
         help="Model checkpoint output directory",
     )
-    parser.add_argument(
-        "--old",
-        action="store_true",
-        help="Train the older version of XorNet."
-    )
-
     args = parser.parse_args(sys.argv[1:])
 
     random.seed(args.seed)
@@ -128,18 +122,11 @@ if __name__ == "__main__":
         non_linearity = nn.Sigmoid()
     elif args.activation.lower() == "relu":
         non_linearity = nn.ReLU()
-    elif args.activation.lower() == "gelu":
-        non_linearity = nn.GELU()
-    if args.old:
-        model = xor_net_old(
-            non_linearity=non_linearity
-        )
-    else:
-        model = xor_net(non_linearity=non_linearity) 
+    model = xor3d_net(non_linearity=non_linearity) 
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
-    train_loader = xor_loader(args.batch_size, train=True)
-    test_loader = xor_loader(args.batch_size, train=False)
+    train_loader = xor3d_loader(args.batch_size, train=True)
+    test_loader = xor3d_loader(args.batch_size, train=False)
 
     global_steps = []
     for epoch in range(args.epochs):
@@ -148,6 +135,6 @@ if __name__ == "__main__":
         )
         global_steps.append(epoch_steps + epoch * len(train_loader))
         test(model, test_loader)
-        torch.save(model.state_dict(), output_dir / f"xor_net{'_old' if args.old else ''}_{args.activation.lower()}_{epoch + 1:02d}.pt")
+        torch.save(model.state_dict(), output_dir / f"xor3d_net_{args.activation.lower()}_{epoch + 1:02d}.pt")
 
     global_steps = torch.cat(global_steps, dim=0)

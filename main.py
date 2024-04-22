@@ -30,7 +30,7 @@ if __name__ == "__main__":
         type=str,
         nargs='+',
         default="MNIST",
-        choices=['MNIST', 'Letters', 'FashionMNIST', 'KMNIST', 'QMNIST', 'XOR', 'CIFAR10', 'Noise', 'Adversarial'],
+        choices=['MNIST', 'Letters', 'FashionMNIST', 'KMNIST', 'QMNIST', 'CIFARMNIST', 'XOR', 'XOR3D', 'CIFAR10', 'Noise', 'Adversarial'],
         metavar='name',
         help="Dataset name to be used.",
     )
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         "--task",
         type=str,
         default="compare",
-        choices=['compare', 'transfer'],
+        choices=['compare', 'transfer', 'foliation'],
         help="Task."
     )
     parser.add_argument(
@@ -83,7 +83,7 @@ if __name__ == "__main__":
         metavar='f',
         nargs='+',
         default="ReLU",
-        choices=['Sigmoid', 'ReLU'],
+        choices=['Sigmoid', 'ReLU', 'GELU'],
         help="Non linearity used by the network."
     )
 
@@ -106,14 +106,14 @@ if __name__ == "__main__":
         non_linearities = [non_linearities] * len(dataset_names)
     elif len(non_linearities) == 1:
         non_linearities = non_linearities * len(dataset_names)
-    precision_type = torch.double if args.double else torch.float
+    dtype = torch.double if args.double else torch.float
     restrict_to_class = args.restrict
     pool = "maxpool" if args.maxpool else "avgpool"
     date = datetime.now().strftime("%y%m%d-%H%M%S")
     savedirectory = args.savedirectory + \
         ("" if args.savedirectory[-1] == '/' else '/') + \
-        f"{'-'.join(dataset_names)}/{task}/{precision_type}/" + \
-        f"{date}_nsample={num_samples}{f'_class={restrict_to_class}' if restrict_to_class is not None else ''}_{pool}/"
+        f"{'-'.join(dataset_names)}/{task}/{dtype}/" + \
+        f"{date}_nsample={num_samples}{f'_class={restrict_to_class}' if restrict_to_class is not None else ''}_{pool}_{'-'.join(non_linearities)}/"
     if not path.isdir(savedirectory):
         makedirs(savedirectory)
 
@@ -138,7 +138,6 @@ if __name__ == "__main__":
         
         if len(experiment_list) > 0:
             print('entering comparison')
-            base_experiment = experiment_list[0]
             base_space = None # TODO: how to do cleaner?
             if dataset in ['Noise', 'Adversarial']:
                 base_space = deepcopy(base_experiment.input_space)
@@ -146,7 +145,7 @@ if __name__ == "__main__":
                 dataset_name=dataset,
                 non_linearity=non_linearity,
                 adversarial_budget=adversarial_budget,
-                precision_type=precision_type,
+                dtype=dtype,
                 device=device,
                 num_samples=num_samples,
                 pool=pool,
@@ -162,7 +161,7 @@ if __name__ == "__main__":
                 dataset_name=dataset,
                 non_linearity=non_linearity,
                 adversarial_budget=adversarial_budget,
-                precision_type=precision_type,
+                dtype=dtype,
                 device=device,
                 num_samples=num_samples,
                 restrict_to_class=restrict_to_class,
@@ -171,12 +170,14 @@ if __name__ == "__main__":
             )
             
         experiment_list.append(experiment)
+        if base_experiment is None:
+            base_experiment = experiment_list[0]
 
     base_output_dimension = base_experiment.get_output_dimension()
     
     nb_experiments = len(experiment_list)
 
-    print(f'Task {task} with dataset {dataset_names} and {num_samples} samples.')
+    print(f'Task {task} with dataset {dataset_names}, non linearities {non_linearities} and {num_samples} samples.')
 
     if task == "compare":
         _, axes = plt.subplots()
@@ -224,7 +225,12 @@ if __name__ == "__main__":
         saving_path = savedirectory + 'loss_and_acc.pdf'
         plt.savefig(saving_path, transparent=True, dpi=None)
         
-
+    elif task == 'foliation':
+        transverse = True
+        for experiment in experiment_list:
+            experiment.plot_foliation(transverse=transverse)
+            saving_path = savedirectory + f"{'transverse' if transverse else 'kernel'}_foliations.pdf"
+            plt.savefig(saving_path, transparent=True, dpi=None)
     # elif task == 'rank2D':
     #     plot.save_function_neighborhood(
     #         geo_model,
