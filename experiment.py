@@ -318,6 +318,44 @@ class Experiment(object):
         print(f"network to {self.device} as {self.dtype} done")
 
 
+    def plot_traces(
+        self,
+        axes,
+        output_dir: Union[str, Path]='output/',
+        singular_values: bool=False,
+        face_color: Optional[str]=None,
+        positions: Optional[list[float]]=None,
+        box_width: float=1,
+    ) -> None:
+        """Plot the mean ordered eigenvalues of the Fisher Information Matrix, also called the Local Data Matrix."""
+
+        if not path.isdir(output_dir):
+            makedirs(output_dir)
+       
+        local_data_matrix = self.geo_model.local_data_matrix(self.input_points)
+
+        number_of_batch = local_data_matrix.shape[0]
+
+        if face_color is None:
+            face_color = 'white'
+
+
+        traces = torch.einsum('...ii', local_data_matrix).log10().detach().cpu()
+
+        torch.save(traces, path.join(output_dir, f"experiment_{self.dataset_name}_traces.pt"))
+
+        boxplot = axes.boxplot(traces,
+                               positions=positions,
+                               widths=box_width,
+                               patch_artist=True,
+                               boxprops=dict(facecolor=face_color),
+                               medianprops=dict(color='black'),
+                               meanprops=dict(markeredgecolor='black', markerfacecolor=face_color),
+                               showmeans=True
+                               )
+        return boxplot
+
+
     def plot_FIM_eigenvalues(
         self,
         axes,

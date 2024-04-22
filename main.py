@@ -9,6 +9,7 @@ import numpy as np
 
 import torch
 from torch import nn
+from tqdm import tqdm
 from geometry import GeometricModel
 from experiment import Experiment
 
@@ -52,7 +53,7 @@ if __name__ == "__main__":
         "--task",
         type=str,
         default="compare",
-        choices=['compare', 'transfer', 'foliation'],
+        choices=['compare', 'transfer', 'foliation', 'traces'],
         help="Task."
     )
     parser.add_argument(
@@ -183,10 +184,9 @@ if __name__ == "__main__":
         _, axes = plt.subplots()
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
-        for i, experiment in enumerate(experiment_list):
+        for i, experiment in tqdm(enumerate(experiment_list)):
             bp = experiment.plot_FIM_eigenvalues(axes, known_rank=base_output_dimension - 1, face_color=colors[i], positions=torch.arange(0, base_output_dimension) + (i / nb_experiments), box_width=1 / (nb_experiments + 1), output_dir=savedirectory)
             bp_list.append(bp)
-            experiment.save_info_to_txt(savedirectory)
         #  axes.set_yscale('log')
         axes.set_xticks(torch.arange(base_output_dimension) + ((nb_experiments - 1) / nb_experiments) / 2, [r"$\lambda_{(" + str(i) + r")}$" for i in range(1, base_output_dimension + 1)])
         axes.set_ylabel(r"$\log_{10}$ of the eigenvalue")
@@ -196,11 +196,10 @@ if __name__ == "__main__":
         saving_path = savedirectory + 'eigenvalues_comparison.pdf'
         plt.savefig(saving_path, transparent=True, dpi=None)
     
-    if task == "transfer":
+    elif task == "transfer":
         _, axes = plt.subplots(1, 2)
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
-        base_experiment.save_info_to_txt(savedirectory)
-        for i, experiment in enumerate(experiment_list[1:]):
+        for i, experiment in tqdm(enumerate(experiment_list[1:])):
             tl = TransferLearning(
                 base_experiment=base_experiment,
                 target_experiment=experiment,
@@ -213,8 +212,6 @@ if __name__ == "__main__":
             for key, acc in acc_dict.items():
                 axes[1].plot(acc, label=f"{key} for {experiment.dataset_name}", linestyle=line_styles[key], color=colors[i])
             tl.save_info_to_txt(savedirectory)
-            experiment.save_info_to_txt(savedirectory)
-        
             
         axes[0].set_ylabel("Loss")
         axes[1].set_ylabel("Accuracy")
@@ -227,10 +224,27 @@ if __name__ == "__main__":
         
     elif task == 'foliation':
         transverse = True
-        for experiment in experiment_list:
+        for experiment in tqdm(experiment_list):
             experiment.plot_foliation(transverse=transverse)
             saving_path = savedirectory + f"{'transverse' if transverse else 'kernel'}_foliations.pdf"
             plt.savefig(saving_path, transparent=True, dpi=None)
+    
+    elif task == 'traces':
+        _, axes = plt.subplots()
+        colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
+        bp_list = []
+        for i, experiment in tqdm(enumerate(experiment_list)):
+            bp = experiment.plot_traces(axes, face_color=colors[i], positions=[i], output_dir=savedirectory)
+            bp_list.append(bp)
+        #  axes.set_yscale('log')
+        axes.set_xticks(torch.arange(nb_experiments), [exp.dataset_name for exp in experiment_list])
+        axes.set_ylabel(r"$\log_{10}$ of the trace of the FIM")
+        axes.set_xlabel("Dataset")
+        #  plt.legend([bp['boxes'][0] for bp in bp_list], [exp.dataset_name for exp in experiment_list])
+
+        saving_path = savedirectory + 'traces_comparison.pdf'
+        plt.savefig(saving_path, transparent=True, dpi=None)
+
     # elif task == 'rank2D':
     #     plot.save_function_neighborhood(
     #         geo_model,
@@ -269,5 +283,8 @@ if __name__ == "__main__":
     #         plot_range=10,
     #     )
     #     print('wait')
+
+    for experiment in experiment_list:
+        experiment.save_info_to_txt(savedirectory)
 
     print("Done.")
