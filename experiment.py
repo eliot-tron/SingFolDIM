@@ -347,6 +347,7 @@ class Experiment(object):
         boxplot = axes.boxplot(traces,
                                positions=positions,
                                widths=box_width,
+                               sym='.',
                                patch_artist=True,
                                boxprops=dict(facecolor=face_color),
                                medianprops=dict(color='black'),

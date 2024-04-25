@@ -79,6 +79,11 @@ if __name__ == "__main__":
         help="Use the legacy architecture with maxpool2D instead of avgpool2d."
     )
     parser.add_argument(
+        "--cpu",
+        action="store_true",
+        help="Force device to cpu."
+    )
+    parser.add_argument(
         "--nl",
         type=str,
         metavar='f',
@@ -91,7 +96,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # device = torch.device('cpu')
+    if args.cpu:
+        device = torch.device('cpu')
     print(f"Device: {device}")
 
     dataset_names = args.datasets
@@ -182,6 +188,7 @@ if __name__ == "__main__":
 
     if task == "compare":
         _, axes = plt.subplots()
+        plt.figure(figsize=(2, 1))
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
         for i, experiment in tqdm(enumerate(experiment_list)):
@@ -194,6 +201,7 @@ if __name__ == "__main__":
         plt.legend([bp['boxes'][0] for bp in bp_list], [exp.dataset_name for exp in experiment_list])
 
         saving_path = savedirectory + 'eigenvalues_comparison.pdf'
+        plt.tight_layout()
         plt.savefig(saving_path, transparent=True, dpi=None)
     
     elif task == "transfer":
@@ -215,11 +223,14 @@ if __name__ == "__main__":
             
         axes[0].set_ylabel("Loss")
         axes[1].set_ylabel("Accuracy")
+        # for a in axes:
+        #     a.set_box_aspect(1)
             
         for ax in axes:
             ax.set_xlabel("Epochs")
             ax.legend()
         saving_path = savedirectory + 'loss_and_acc.pdf'
+        plt.tight_layout()
         plt.savefig(saving_path, transparent=True, dpi=None)
         
     elif task == 'foliation':
@@ -227,6 +238,8 @@ if __name__ == "__main__":
         for experiment in tqdm(experiment_list):
             experiment.plot_foliation(transverse=transverse)
             saving_path = savedirectory + f"{'transverse' if transverse else 'kernel'}_foliations.pdf"
+            plt.gca().set_aspect('equal')
+            plt.tight_layout()
             plt.savefig(saving_path, transparent=True, dpi=None)
     
     elif task == 'traces':
@@ -237,12 +250,13 @@ if __name__ == "__main__":
             bp = experiment.plot_traces(axes, face_color=colors[i], positions=[i], output_dir=savedirectory)
             bp_list.append(bp)
         #  axes.set_yscale('log')
-        axes.set_xticks(torch.arange(nb_experiments), [exp.dataset_name for exp in experiment_list])
+        axes.set_xticks(torch.arange(nb_experiments), [exp.dataset_name for exp in experiment_list], rotation=25)
         axes.set_ylabel(r"$\log_{10}$ of the trace of the FIM")
         axes.set_xlabel("Dataset")
         #  plt.legend([bp['boxes'][0] for bp in bp_list], [exp.dataset_name for exp in experiment_list])
 
         saving_path = savedirectory + 'traces_comparison.pdf'
+        plt.tight_layout()
         plt.savefig(saving_path, transparent=True, dpi=None)
 
     # elif task == 'rank2D':

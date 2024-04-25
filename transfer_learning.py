@@ -111,6 +111,9 @@ class TransferLearning(object):
 
         since = time.time()
 
+        output_dir = os.path.join(output_dir, f"base={self.base_experiment.dataset_name}_target={self.target_experiment.dataset_name}/")
+        os.makedirs(output_dir, exist_ok=True)
+
         suffix_name = f"{'_fixed' if fix_other_layers else ''}_bs={batch_size}_workers={num_workers}_lr={lr_start}"  # TODO: do a txt file and a unique id and good output_dir with the time and all
         best_model_params_path = os.path.join(output_dir, f"best_model_params_by_transfer_learning{suffix_name}.pt")
         metrics_path = os.path.join(output_dir, f"loss_and_acc_during_transfer_learning{suffix_name}.pt")
