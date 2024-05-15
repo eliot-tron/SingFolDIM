@@ -347,7 +347,7 @@ class Experiment(object):
         boxplot = axes.boxplot(traces,
                                positions=positions,
                                widths=box_width,
-                               sym='.',
+                               sym=',',
                                patch_artist=True,
                                boxprops=dict(facecolor=face_color),
                                medianprops=dict(color='black'),
@@ -413,6 +413,7 @@ class Experiment(object):
         boxplot = axes.boxplot(oredered_list_eigenvalues,
                                positions=positions,
                                widths=box_width,
+                               sym=',',
                                patch_artist=True,
                                boxprops=dict(facecolor=face_color),
                                medianprops=dict(color='black'),
@@ -508,7 +509,7 @@ class Experiment(object):
             e = e / norm
             return e
 
-        leaf = odeint(f, init_points, t=torch.linspace(0, 0.5, 100), method="rk4").transpose(0, 1)
-        leaf_back = odeint(f, init_points, t=-torch.linspace(0, 0.5, 100), method="rk4").transpose(0, 1)
+        leaf = odeint(f, init_points, t=torch.linspace(0, 0.5 * 4, 100 * 4), method="rk4").transpose(0, 1)
+        leaf_back = odeint(f, init_points, t=-torch.linspace(0, 0.5 * 4, 100 * 4), method="rk4").transpose(0, 1)
         
         return torch.cat((leaf_back.flip(1)[:,:-1], leaf), dim=1)
