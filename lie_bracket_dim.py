@@ -109,12 +109,12 @@ if __name__ == "__main__":
 
     pool = "maxpool" if args.maxpool else "avgpool"
     date = datetime.now().strftime("%y%m%d-%H%M%S")
-    #  savedirectory = args.savedirectory + \
-        #  ("" if args.savedirectory[-1] == '/' else '/') + \
-        #  f"{'-'.join(dataset_names)}/{task}/{dtype}/" + \
-        #  f"{date}_nsample={num_samples}{f'_class={restrict_to_class}' if restrict_to_class is not None else ''}_{pool}_{'-'.join(non_linearities)}/"
-    #  if not path.isdir(savedirectory):
-        #  makedirs(savedirectory)
+    savedirectory = args.savedirectory + \
+        ("" if args.savedirectory[-1] == '/' else '/') + \
+        f"{'-'.join(dataset_names)}/involutivity_check/{dtype}/" + \
+        f"{date}_nsample={num_samples}{f'_class={restrict_to_class}' if restrict_to_class is not None else ''}_{pool}_{'-'.join(non_linearities)}/"
+    if not path.isdir(savedirectory):
+        makedirs(savedirectory)
 
     if not args.random:
         seed = 42
@@ -143,26 +143,31 @@ if __name__ == "__main__":
         )
         experiment_list.append(experiment)
 
-    normalize = transforms.Normalize((0.,), (1.,))
+    #  normalize = transforms.Normalize((0.,), (1.,))
+    random_noise = True
 
-    for i, experiment in tqdm(enumerate(experiment_list)):
-        print(f"Testing experiment n°{i}: {experiment.dataset_name}")
+    for i, experiment in enumerate(tqdm(experiment_list)):
+        print(f"Testing experiment n°{i}: {experiment.dataset_name} - {experiment.non_linearity}.")
         geo_model = experiment.geo_model
-        jac = geo_model.jac_proba(experiment.input_points) # (..., a, l) 
-        lie_bracket = geo_model.lie_bracket(experiment.input_points) # (..., b, c, l)
+        input_points = deepcopy(experiment.input_points)
+        if random_noise:
+            input_points = torch.rand_like(input_points).to(device).to(dtype)
+        jac = geo_model.jac_proba(input_points) # (..., a, l) 
+        lie_bracket = geo_model.lie_bracket(input_points) # (..., b, c, l)
         lie_bracket = lie_bracket.flatten(-3, -2)
 
         rank_jac = torch.linalg.matrix_rank(jac, atol=None)
 
-        print(f"Rank of the distribution: {rank_jac}.")
+        print(f"Rank of the distribution: {rank_jac} (mean={rank_jac.float().mean()}).")
 
         rank_lie_bracket = torch.linalg.matrix_rank(lie_bracket, atol=None)
-        print(f"Rank of the lie brackets: {rank_lie_bracket}.")
+        print(f"Rank of the lie brackets: {rank_lie_bracket} (mean={rank_lie_bracket.float().mean()}).")
 
         cat = torch.cat((jac, lie_bracket), dim=-2)
         print(f"Dimension after concatenation: {cat.shape}.")
         rank_cat = torch.linalg.matrix_rank(cat, atol=None)
-        print(f"Rank of the sum: {rank_cat}.")
+        print(f"Rank of the sum: {rank_cat} (mean={rank_cat.float().mean()}).")
+        torch.save((rank_jac, rank_lie_bracket, rank_cat),  savedirectory +  f"rank_jac_rank_lie_bracket_rank_cat_{experiment.dataset_name}_{experiment.non_linearity}.pt")
 
 
 
