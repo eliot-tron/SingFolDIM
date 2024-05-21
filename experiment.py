@@ -106,7 +106,7 @@ class Experiment(object):
             elif self.non_linearity == 'ReLU':
                 self.nl_function= nn.ReLU()
             elif self.non_linearity == 'GELU':
-                if self.dataset_name != 'XOR': print('WARNING: GELU is (for now) only implemented with the weights of the ReLU network.')
+                if self.dataset_name not in ['XOR', 'MNIST']: print('WARNING: GELU is (for now) only implemented with the weights of the ReLU network.')
                 self.nl_function = nn.GELU()
 
     def init_checkpoint_path(self):
@@ -116,7 +116,7 @@ class Experiment(object):
             elif self.non_linearity == 'ReLU':
                 self.checkpoint_path = f'./checkpoint/mnist_medium_cnn_30_{self.pool}_ReLU.pt'
             elif self.non_linearity == 'GELU':
-                self.checkpoint_path = f'./checkpoint/mnist_medium_cnn_10_{self.pool}_ReLU.pt'
+                self.checkpoint_path = f'./checkpoint/mnist_medium_cnn_30_{self.pool}_GELU.pt'
         elif self.dataset_name == 'CIFAR10':
             if self.non_linearity == 'Sigmoid':
                 raise NotImplementedError
