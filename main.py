@@ -191,7 +191,7 @@ if __name__ == "__main__":
         plt.figure(figsize=(2, 1))
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
-        for i, experiment in tqdm(enumerate(experiment_list)):
+        for i, experiment in enumerate(tqdm(experiment_list)):
             bp = experiment.plot_FIM_eigenvalues(axes, known_rank=base_output_dimension - 1, face_color=colors[i], positions=torch.arange(0, base_output_dimension) + (i / nb_experiments), box_width=1 / (nb_experiments + 1), output_dir=savedirectory)
             bp_list.append(bp)
         #  axes.set_yscale('log')
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     elif task == "transfer":
         _, axes = plt.subplots(1, 2)
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
-        for i, experiment in tqdm(enumerate(experiment_list[1:])):
+        for i, experiment in enumerate(tqdm(experiment_list[1:])):
             tl = TransferLearning(
                 base_experiment=base_experiment,
                 target_experiment=experiment,
@@ -246,7 +246,7 @@ if __name__ == "__main__":
         _, axes = plt.subplots()
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
-        for i, experiment in tqdm(enumerate(experiment_list)):
+        for i, experiment in enumerate(tqdm(experiment_list)):
             bp = experiment.plot_traces(axes, face_color=colors[i], positions=[i], output_dir=savedirectory)
             bp_list.append(bp)
         #  axes.set_yscale('log')

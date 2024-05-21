@@ -226,9 +226,9 @@ class GeometricModel(object):
             J_p = self.jac_proba(eval_point)
             shape = self.proba(eval_point).shape
             H_p = []
-            for bs, point in enumerate(eval_point):
+            for bs, point in enumerate(tqdm(eval_point)):
                 H_list = []
-                for class_index in tqdm(range(shape[1])):
+                for class_index in range(shape[1]):
                     h_p_i = hessian(lambda x: self.proba(x)[0, class_index], point)
                     h_p_i = h_p_i.flatten(len(point.shape))
                     h_p_i = h_p_i.flatten(end_dim=-2)
