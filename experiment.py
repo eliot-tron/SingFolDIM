@@ -18,6 +18,7 @@ from xor_datasets import XorDataset
 from xor_networks import xor_net
 from autoattack import AutoAttack
 
+# TODO: break into multiple files.
 
 class Experiment(object):
 
@@ -68,7 +69,7 @@ class Experiment(object):
     
     
     def __str__(self) -> str:
-        title = "Experiment object"
+        title = f"{type(self).__name__} object"
         variables = ""
         for key, var in vars(self).items():
             variables += f"- {key}: {var}\n"
@@ -77,7 +78,7 @@ class Experiment(object):
     
     
     def save_info_to_txt(self, save_directory: str):
-        saving_path = path.join(save_directory, f"experiment_{self.dataset_name}_info.txt")
+        saving_path = path.join(save_directory, f"{type(self).__name__}_{self.dataset_name}_info.txt")
         with open(saving_path, 'w') as file:
             file.write(str(self))
 
@@ -100,6 +101,7 @@ class Experiment(object):
         )
 
     def init_nl_function(self):
+        """Initializes the value of self.nl_function based on the string variable self.non_linearity."""
         if isinstance(self.non_linearity, str):
             if self.non_linearity == 'Sigmoid':
                 self.nl_function = nn.Sigmoid()
@@ -110,148 +112,43 @@ class Experiment(object):
                 self.nl_function = nn.GELU()
 
     def init_checkpoint_path(self):
-        if self.dataset_name == "MNIST":
-            if self.non_linearity == 'Sigmoid':
-                self.checkpoint_path = f'./checkpoint/mnist_medium_cnn_30_{self.pool}_Sigmoid.pt'
-            elif self.non_linearity == 'ReLU':
-                self.checkpoint_path = f'./checkpoint/mnist_medium_cnn_30_{self.pool}_ReLU.pt'
-            elif self.non_linearity == 'GELU':
-                self.checkpoint_path = f'./checkpoint/mnist_medium_cnn_30_{self.pool}_GELU.pt'
-        elif self.dataset_name == 'CIFAR10':
-            if self.non_linearity == 'Sigmoid':
-                raise NotImplementedError
-            elif self.non_linearity == 'ReLU':
-                self.checkpoint_path = f'./checkpoint/cifar10_medium_cnn_30_{self.pool}_ReLU_vgg11.pt'
-            elif self.non_linearity == 'GELU':
-                self.checkpoint_path = f'./checkpoint/cifar10_medium_cnn_30_{self.pool}_ReLU_vgg11.pt'
-        elif self.dataset_name == "XOR":
-            if self.non_linearity == 'Sigmoid':
-                self.checkpoint_path = './checkpoint/xor_net_sigmoid_20.pt'
-            elif self.non_linearity == 'ReLU':
-                self.checkpoint_path = './checkpoint/xor_net_relu_30.pt'
-            elif self.non_linearity == 'GELU':
-                self.checkpoint_path = './checkpoint/xor_net_gelu_acc100.pt'
-        elif self.dataset_name == "XOR3D":
-            if self.non_linearity == 'ReLU':
-                self.checkpoint_path = './checkpoint/xor3d_net_relu_hl16_acc96.pt'
-            else:
-                raise NotImplementedError(f"XOR3D not implement for {self.non_linearity}.")
-        else:
-            raise NotImplementedError(f"{self.dataset_name} cannot be a base dataset yet.")
+        """Initializes the value of self.checkpoint_path based on self.dataset_name and self.non_linearity."""
+        raise NotImplementedError(f"No checkpoint path given for {self.dataset_name}.")
 
     def init_input_space(self,
                          root: str='data',
                          download: bool=True,
-                         train=False,
                          ):
-        """TODO: Docstring for init_input_space.
+        """Initializes the value of self.input_space with a dictionary with two datasets: the train one
+        and the test one. It does so based on the 
 
         :root: Root directory to the dataset if already downloaded.
-        :train (bool, optional): If True, creates dataset from training.pt, 
-            otherwise from test.pt.
         :download (bool, optional): If True, downloads the dataset from the internet and
-            puts it in root directory. If dataset is already downloaded, it is not
-    downloaded again.
+                                    puts it in root directory. If dataset is already downloaded,
+                                    it is not downloaded again.
 
         :returns: None
 
         """
-        if self.dataset_name == 'MNIST':
-            self.input_space = {x: datasets.MNIST(
-                root,
-                train=(x=='train'),
-                download=download,
-                transform=transforms.Compose([transforms.ToTensor()]),
-            ) for x in ['train', 'val']
-            }
-        elif self.dataset_name == 'Letters':
-            self.input_space = {x: datasets.EMNIST(
-                root,
-                train=(x=='train'),
-                download=download,
-                split="letters",
-                transform=transforms.Compose([transforms.ToTensor()]),
-            ) for x in ['train', 'val']
-            }
-        elif self.dataset_name == 'FashionMNIST':
-            self.input_space = {x: datasets.FashionMNIST(
-                root,
-                train=(x=='train'),
-                download=download,
-                transform=transforms.Compose([transforms.ToTensor()]),
-            ) for x in ['train', 'val']
-            }
-        elif self.dataset_name == 'KMNIST':
-            self.input_space = {x: datasets.KMNIST(
-                root,
-                train=(x=='train'),
-                download=download,
-                transform=transforms.Compose([transforms.ToTensor()]),
-            ) for x in ['train', 'val']
-            }
-        elif self.dataset_name == 'QMNIST':
-            self.input_space = {x: datasets.QMNIST(
-                root,
-                train=(x=='train'),
-                download=download,
-                transform=transforms.Compose([transforms.ToTensor()]),
-            ) for x in ['train', 'val']
-            }
-        elif self.dataset_name == 'CIFARMNIST':
-            transform = transforms.Compose(
-                [
-                    transforms.Grayscale(),
-                    transforms.ToTensor(),
-                    transforms.Resize(size=(28, 28)),
-                ])
-
-            self.input_space = {x: datasets.CIFAR10(
-                root,
-                train=(x=='train'),
-                download=download,
-                transform=transform,
-            ) for x in ['train', 'val']
-            }
-        elif self.dataset_name == 'CIFAR10':
-            transform = transforms.Compose(
-                [transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-                ])
-
-            self.input_space = {x: datasets.CIFAR10(
-                root,
-                train=(x=='train'),
-                download=download,
-                transform=transform,
-            ) for x in ['train', 'val']
-            }
-        elif self.dataset_name == 'XOR':
-            self.input_space = {x: XorDataset(
-                nsample=10000,
-                test=(x=='val'),
-                discrete=False,
-            ) for x in ['train', 'val']
-            }
-        elif self.dataset_name == 'XOR3D':
-            self.input_space = {x: Xor3dDataset(
-                nsample=10000,
-                test=(x=='val'),
-                discrete=False,
-            ) for x in ['train', 'val']
-            }
+        if self.input_space is not None:
+            if self.restrict_to_class is not None:
+                for input_space_train_or_val in self.input_space:
+                    restriction_indices = input_space_train_or_val.targets == self.restrict_to_class
+                    input_space_train_or_val.targets = input_space_train_or_val.targets[restriction_indices]
+                    input_space_train_or_val.data = input_space_train_or_val.data[restriction_indices]
         elif self.dataset_name in ['Noise', 'Adversarial']:
             raise ValueError(f"{self.dataset_name} cannot be a base dataset.")
         else:
             raise NotImplementedError(f"{self.dataset_name} cannot be a base dataset yet.")
 
-        if self.restrict_to_class is not None:
-            for input_space_train_or_val in self.input_space:
-                restriction_indices = input_space_train_or_val.targets == self.restrict_to_class
-                input_space_train_or_val.targets = input_space_train_or_val.targets[restriction_indices]
-                input_space_train_or_val.data = input_space_train_or_val.data[restriction_indices]
 
     def init_input_points(self, train:bool=True):
-        """TODO: Docstring for init_input_points.
+        """Initializes the value of self.input_point (torch.Tensor) based on 
+        self.input_space, self.num_samples, self.random, and if self.dataset_name
+        is Noise if self.adversarial_budget > 0.
+
+        :train: If True, get points from the training dataset,
+                else from the validation dataset.
 
         :returns: TODO
 
@@ -275,47 +172,36 @@ class Experiment(object):
             self.input_points = torch.rand_like(self.input_points).to(self.device).to(self.dtype)
         if self.adversarial_budget > 0:
             print("Computing the adversarial attacks...")
-            adversary = AutoAttack(self.network_score.float(), norm='L2', eps=self.adversarial_budget, version='custom', attacks_to_run=['apgd-ce'], device=self.device, verbose=False)
+            adversary = AutoAttack(self.network_score, norm='L2', eps=self.adversarial_budget, version='custom', attacks_to_run=['apgd-ce'], device=self.device, verbose=False)
             labels = torch.argmax(self.network_score(self.input_points), dim=-1)
-            attacked_points = adversary.run_standard_evaluation(self.input_points.clone().float(), labels, bs=250)
-            self.input_points = attacked_points.to(self.dtype)
+            attacked_points = adversary.run_standard_evaluation(self.input_points.clone(), labels, bs=250)
+            self.input_points = attacked_points #.to(self.dtype)
             print("...done!")
 
 
 
     def init_networks(self):
-        """TODO: Docstring for init_networks.
+        """Initializes the value of self.network and self.network_score based on the string
+        self.dataset_name, and self.pool.
 
         :arg1: TODO
         :returns: TODO
 
         """
-        maxpool = (self.pool == 'maxpool')
-        if self.dataset_name == 'MNIST':
-            self.network = mnist_networks.medium_cnn(self.checkpoint_path, non_linearity=self.nl_function, maxpool=maxpool)
-            self.network_score = mnist_networks.medium_cnn(
-                self.checkpoint_path, score=True, non_linearity=self.nl_function, maxpool=maxpool)
-        elif self.dataset_name == 'CIFAR10':
-            self.network = cifar10_networks.medium_cnn(self.checkpoint_path, maxpool=maxpool)
-            self.network_score = cifar10_networks.medium_cnn(self.checkpoint_path, score=True, maxpool=maxpool)
-        elif self.dataset_name == 'XOR':
-            self.network = xor_net(self.checkpoint_path, non_linearity=self.nl_function)
-            self.network_score = xor_net(self.checkpoint_path, score=True, non_linearity=self.nl_function)
-        elif self.dataset_name == 'XOR3D':
-            self.network = xor3d_net(self.checkpoint_path, non_linearity=self.nl_function)
-            self.network_score = xor3d_net(self.checkpoint_path, score=True, non_linearity=self.nl_function)
+        if isinstance(self.network, torch.nn.Module) and isinstance(self.network_score, torch.nn.Module):
+            self.network = self.network.to(self.device).to(self.dtype)
+            self.network_score = self.network_score.to(self.device).to(self.dtype)
+
+            if torch.cuda.device_count() > 1 and self.device.type == 'cuda':
+                print(f"Let's use {torch.cuda.device_count()} GPUs!")
+                # self.network = nn.DataParallel(self.network)
+                # self.network_score = nn.DataParallel(self.network_score)
+
+            print(f"network to {self.device} as {self.dtype} done")
+        elif self.dataset_name in ['Noise', 'Adversarial']:
+            raise ValueError(f"{self.dataset_name} cannot have an associated network.")
         else:
             raise NotImplementedError(f"The dataset {self.dataset_name} has no associated network yet.")
-
-        self.network = self.network.to(self.device).to(self.dtype)
-        self.network_score = self.network_score.to(self.device).to(self.dtype)
-
-        if torch.cuda.device_count() > 1 and self.device.type == 'cuda':
-            print(f"Let's use {torch.cuda.device_count()} GPUs!")
-            # self.network = nn.DataParallel(self.network)
-            # self.network_score = nn.DataParallel(self.network_score)
-
-        print(f"network to {self.device} as {self.dtype} done")
 
 
     def plot_traces(
@@ -513,3 +399,545 @@ class Experiment(object):
         leaf_back = odeint(f, init_points, t=-torch.linspace(0, 0.5 * 4, 100 * 4), method="rk4").transpose(0, 1)
         
         return torch.cat((leaf_back.flip(1)[:,:-1], leaf), dim=1)
+
+
+class MNISTExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("MNIST", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_checkpoint_path(self):
+        self.checkpoint_path = f'./checkpoint/mnist_medium_cnn_30_{self.pool}_{self.non_linearity}.pt'
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        self.input_space = {x: datasets.MNIST(
+            root,
+            train=(x=='train'),
+            download=download,
+            transform=transforms.Compose([transforms.ToTensor()]),
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+    def init_networks(self):
+        maxpool = (self.pool == 'maxpool')
+        self.network = mnist_networks.medium_cnn(self.checkpoint_path,
+                                                 non_linearity=self.nl_function,
+                                                 maxpool=maxpool)
+        self.network_score = mnist_networks.medium_cnn(self.checkpoint_path,
+                                                       score=True,
+                                                       non_linearity=self.nl_function,
+                                                       maxpool=maxpool)
+
+        return super().init_networks()
+
+
+class CIFAR10Exp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("CIFAR10", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_checkpoint_path(self):
+        self.checkpoint_path = f'./checkpoint/cifar10_medium_cnn_30_{self.pool}_{self.non_linearity}_vgg11.pt'
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        transform = transforms.Compose(
+            [transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            ])
+
+        self.input_space = {x: datasets.CIFAR10(
+            root,
+            train=(x=='train'),
+            download=download,
+            transform=transform,
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+    def init_networks(self):
+        maxpool = (self.pool == 'maxpool')
+        self.network = cifar10_networks.medium_cnn(self.checkpoint_path, maxpool=maxpool)
+        self.network_score = cifar10_networks.medium_cnn(self.checkpoint_path, score=True, maxpool=maxpool)
+
+        return super().init_networks()
+
+
+class XORExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("XOR", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_checkpoint_path(self):
+        if self.non_linearity == 'Sigmoid':
+            self.checkpoint_path = './checkpoint/xor_net_sigmoid_20.pt'
+        elif self.non_linearity == 'ReLU':
+            self.checkpoint_path = './checkpoint/xor_net_relu_30.pt'
+        elif self.non_linearity == 'GELU':
+            self.checkpoint_path = './checkpoint/xor_net_gelu_acc100.pt'
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        self.input_space = {x: XorDataset(
+            nsample=10000,
+            test=(x=='val'),
+            discrete=False,
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+    def init_networks(self):
+        self.network = xor_net(self.checkpoint_path, non_linearity=self.nl_function)
+        self.network_score = xor_net(self.checkpoint_path, score=True, non_linearity=self.nl_function)
+
+        return super().init_networks()
+
+
+class XOR3DExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("XOR3D", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_checkpoint_path(self):
+        if self.non_linearity == 'ReLU':
+            self.checkpoint_path = './checkpoint/xor3d_net_relu_hl16_acc96.pt'
+        else:
+            raise NotImplementedError(f"XOR3D not implement for {self.non_linearity}.")
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        self.input_space = {x: Xor3dDataset(
+            nsample=10000,
+            test=(x=='val'),
+            discrete=False,
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+    def init_networks(self):
+        self.network = xor3d_net(self.checkpoint_path, non_linearity=self.nl_function)
+        self.network_score = xor3d_net(self.checkpoint_path, score=True, non_linearity=self.nl_function)
+
+        return super().init_networks()
+
+
+
+class LettersExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("Letters", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        self.input_space = {x: datasets.EMNIST(
+            root,
+            train=(x=='train'),
+            download=download,
+            split="letters",
+            transform=transforms.Compose([transforms.ToTensor()]),
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+
+class FashionMNISTExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("FashionMNIST", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        self.input_space = {x: datasets.FashionMNIST(
+            root,
+            train=(x=='train'),
+            download=download,
+            transform=transforms.Compose([transforms.ToTensor()]),
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+
+class KMNISTExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("KMNIST", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        self.input_space = {x: datasets.KMNIST(
+            root,
+            train=(x=='train'),
+            download=download,
+            transform=transforms.Compose([transforms.ToTensor()]),
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+
+class QMNISTExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("QMNIST", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        self.input_space = {x: datasets.QMNIST(
+            root,
+            train=(x=='train'),
+            download=download,
+            transform=transforms.Compose([transforms.ToTensor()]),
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+
+class CIFARMNISTExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("CIFARMNIST", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        transform = transforms.Compose(
+            [
+                transforms.Grayscale(),
+                transforms.ToTensor(),
+                transforms.Resize(size=(28, 28)),
+            ])
+
+        self.input_space = {x: datasets.CIFAR10(
+            root,
+            train=(x=='train'),
+            download=download,
+            transform=transform,
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+
+# TODO: what to do with Noise and Adversarial? function ? class ? how to do not-base-experiments ? Remove adversarial_budget and Noise/Adversarial from dataset_name
+
+class NoiseExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("Noise", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_checkpoint_path(self):
+        raise ValueError(f"{self.dataset_name} cannot have an associated network.")
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        raise ValueError(f"{self.dataset_name} cannot be a base dataset.")
+
+    def init_input_points(self, train:bool=True):
+        if self.input_space is not None:
+            super().init_input_points(train=train)
+            self.input_points = torch.rand_like(self.input_points).to(self.device).to(self.dtype)
+        else:
+            raise ValueError(f"{self.dataset_name} cannot be a base dataset.")
+
+    def init_networks(self):
+        raise ValueError(f"{self.dataset_name} cannot have an associated network.")
+
+
+class AdversarialExp(Experiment):
+
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None):
+        super().__init__("Adversarial", 
+                         non_linearity,
+                         adversarial_budget,
+                         torch.float,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network.float(),
+                         network_score.float())
+        if dtype != torch.float:
+            print("WARNING: Adversarial attack only implemented for float32 due to external dependences.")
+
+    def init_checkpoint_path(self):
+        raise ValueError(f"{self.dataset_name} cannot have an associated network.")
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        raise ValueError(f"{self.dataset_name} cannot be a base dataset.")
+
+    def init_input_points(self, train:bool=True):
+        if self.input_space is not None:
+            super().init_input_points(train=train)
+        else:
+            raise ValueError(f"{self.dataset_name} cannot be a base dataset.")
+        # if self.adversarial_budget > 0:
+        #     print("Computing the adversarial attacks...")
+        #     adversary = AutoAttack(self.network_score.float(), norm='L2', eps=self.adversarial_budget, version='custom', attacks_to_run=['apgd-ce'], device=self.device, verbose=False)
+        #     labels = torch.argmax(self.network_score(self.input_points.float()), dim=-1)
+        #     attacked_points = adversary.run_standard_evaluation(self.input_points.clone().float(), labels, bs=250)
+        #     self.input_points = attacked_points.to(self.dtype)
+        #     print("...done!")
+        # else:
+        #     raise ValueError("Adversarial dataset but with self.adversarial_budget <= 0.")
+
+    def init_networks(self):
+        raise ValueError(f"{self.dataset_name} cannot have an associated network.")
+
+
+implemented_experiment_dict = {
+    "MNIST": MNISTExp,
+    "CIFAR10": CIFAR10Exp,
+    "XOR": XORExp,
+    "XOR3D": XOR3DExp,
+    "Letters": LettersExp,
+    "KMNIST": KMNISTExp,
+    "QMNIST": QMNISTExp,
+    "CIFARMNIST": CIFARMNISTExp,
+    "FashionMNIST": FashionMNISTExp,
+    "Noise": NoiseExp,
+    "Adversarial": AdversarialExp,
+}

@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from tqdm import tqdm
 from geometry import GeometricModel
-from experiment import Experiment
+from experiment import *
 
 import mnist_networks, cifar10_networks
 from transfer_learning import TransferLearning
@@ -148,8 +148,7 @@ if __name__ == "__main__":
             base_space = None # TODO: how to do cleaner?
             if dataset in ['Noise', 'Adversarial']:
                 base_space = deepcopy(base_experiment.input_space)
-            experiment = Experiment(
-                dataset_name=dataset,
+            experiment = implemented_experiment_dict[dataset](
                 non_linearity=non_linearity,
                 adversarial_budget=adversarial_budget,
                 dtype=dtype,
@@ -164,8 +163,7 @@ if __name__ == "__main__":
                 network_score=deepcopy(base_experiment.network_score),
             )
         else:
-            experiment = Experiment(
-                dataset_name=dataset,
+            experiment = implemented_experiment_dict[dataset](
                 non_linearity=non_linearity,
                 adversarial_budget=adversarial_budget,
                 dtype=dtype,
@@ -188,7 +186,7 @@ if __name__ == "__main__":
 
     if task == "compare":
         _, axes = plt.subplots()
-        plt.figure(figsize=(2, 1))
+        #  plt.figure(figsize=(2, 1))
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
         for i, experiment in enumerate(tqdm(experiment_list)):
