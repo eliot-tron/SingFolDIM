@@ -22,7 +22,7 @@ if __name__ == "__main__":
         type=str,
         nargs='+',
         default="MNIST",
-        choices=['MNIST', 'Letters', 'FashionMNIST', 'KMNIST', 'QMNIST', 'CIFARMNIST', 'XOR', 'XOR3D', 'CIFAR10', 'Circle2', 'Circle6', 'Noise', 'Adversarial'],
+        choices=['MNIST', 'Letters', 'FashionMNIST', 'KMNIST', 'QMNIST', 'CIFARMNIST', 'XOR', 'XOR3D', 'CIFAR10', 'Circle2', 'Circle3', 'Circle6', 'Noise', 'Adversarial'],
         metavar='name',
         help="Dataset name to be used.",
     )

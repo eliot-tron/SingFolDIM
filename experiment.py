@@ -678,6 +678,7 @@ class CircleExp(Experiment):
             nsample=10000,
             test=(x=='val'),
             nclasses=self.nclasses,
+            noise=True,
         ) for x in ['train', 'val']
         }
         return super().init_input_space(root, download)
@@ -706,7 +707,8 @@ class CircleExp(Experiment):
         indices = torch.linspace(0, len(input_space_train), nleaves + 1).int()[:-1]
         data_points = torch.stack([input_space_train[idx][0] for idx in indices])
         data_classes = torch.stack([input_space_train[idx][1] for idx in indices])
-        init_points = torch.rand_like(data_points)
+        # init_points = torch.rand_like(data_points) * 2 - 1
+        init_points = data_points
         init_points = init_points.to(self.device).to(self.dtype)
         #  scale = 0.1
         #  xs = torch.arange(0, 1.5 + scale, scale, dtype=self.dtype, device=self.device)
@@ -1054,5 +1056,6 @@ implemented_experiment_dict = {
     "Noise": NoiseExp,
     "Adversarial": AdversarialExp,
     "Circle2": partial(CircleExp, nclasses=2),
+    "Circle3": partial(CircleExp, nclasses=3),
     "Circle6": partial(CircleExp, nclasses=6),
 }
