@@ -1,12 +1,15 @@
+from functools import partial
 from os import makedirs, path
 import time
 from pathlib import Path
 from typing import Dict, Optional, Union
 from torch import nn
 import torch
-from matplotlib import pyplot as plt
+from matplotlib import cm, colors, pyplot as plt
 from tqdm import tqdm
 
+from circle_datasets import CircleDataset
+from circle_networks import circle_net
 from geometry import GeometricModel
 from torchvision import datasets, transforms
 from torchdiffeq import odeint
@@ -67,7 +70,6 @@ class Experiment(object):
         self.init_input_points()
         self.init_geo_model()
     
-    
     def __str__(self) -> str:
         title = f"{type(self).__name__} object"
         variables = ""
@@ -76,12 +78,10 @@ class Experiment(object):
         n_dash = (len(title) - len('variables')) // 2
         return title + '\n' + '-' * n_dash + 'variables' + '-' * n_dash + '\n' + variables
     
-    
     def save_info_to_txt(self, save_directory: str):
         saving_path = path.join(save_directory, f"{type(self).__name__}_{self.dataset_name}_info.txt")
         with open(saving_path, 'w') as file:
             file.write(str(self))
-
 
     def get_output_dimension(self):
         return self.network(self.input_points[0].unsqueeze(0)).shape[-1]
@@ -141,7 +141,6 @@ class Experiment(object):
         else:
             raise NotImplementedError(f"{self.dataset_name} cannot be a base dataset yet.")
 
-
     def init_input_points(self, train:bool=True):
         """Initializes the value of self.input_point (torch.Tensor) based on 
         self.input_space, self.num_samples, self.random, and if self.dataset_name
@@ -178,8 +177,6 @@ class Experiment(object):
             self.input_points = attacked_points #.to(self.dtype)
             print("...done!")
 
-
-
     def init_networks(self):
         """Initializes the value of self.network and self.network_score based on the string
         self.dataset_name, and self.pool.
@@ -202,7 +199,6 @@ class Experiment(object):
             raise ValueError(f"{self.dataset_name} cannot have an associated network.")
         else:
             raise NotImplementedError(f"The dataset {self.dataset_name} has no associated network yet.")
-
 
     def plot_traces(
         self,
@@ -241,7 +237,6 @@ class Experiment(object):
                                showmeans=True
                                )
         return boxplot
-
 
     def plot_FIM_eigenvalues(
         self,
@@ -322,54 +317,7 @@ class Experiment(object):
         :returns: None
 
         """
-        if nleaves is None:
-            nleaves = self.num_samples
-        input_space_train = self.input_space['train']
-        indices = torch.randperm(len(input_space_train))[:nleaves]
-        init_points = torch.stack([input_space_train[idx][0] for idx in indices])
-        init_points = init_points.to(self.device).to(self.dtype)
-        #  scale = 0.1
-        #  xs = torch.arange(0, 1.5 + scale, scale, dtype=self.dtype, device=self.device)
-        #  init_points = torch.cartesian_prod(xs, xs)
-        if self.dataset_name == "XOR":
-            print("Plotting the leaves...")
-            leaves = self.batch_compute_leaf(init_points, transverse=transverse)
-
-            for leaf in tqdm(leaves):
-                plt.plot(leaf[:, 0], leaf[:, 1], color='blue', linewidth=0.2, zorder=1)
-
-            if self.dataset_name == "XOR":
-                plt.plot([0, 1], [0, 1], "ro", zorder=3)
-                plt.plot([0, 1], [1, 0], "go", zorder=3)
-            plt.xlim([-0.1, 1.1])
-            plt.ylim([-0.1, 1.1])
-        elif self.dataset_name == "XOR3D":
-            print("Plotting the leaves...")
-            leaves = self.batch_compute_leaf(init_points, transverse=transverse)
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-
-            for leaf in tqdm(leaves):
-                if transverse:
-                    ax.plot(leaf[:, 0], leaf[:, 1], leaf[:, 2], color='blue', linewidth=0.2, zorder=1)
-                else:
-                    X, Y = torch.meshgrid(leaf[:, 0], leaf[:, 1])
-                    Z = leaf[:, 2].unsqueeze(0).expand(leaf.shape[0], -1)
-                    ax.plot_wireframe(X, Y, Z, color='blue', zorder=1, rcount=10, ccount=10)
-
-            if self.dataset_name == "XOR3D":
-                for (inp, label) in Xor3dDataset(test=True, discrete=True, nsample=8):
-                    if label == 1:
-                        ax.plot(inp[0], inp[1], inp[2], "go", zorder=3)
-                    if label == 0:
-                        ax.plot(inp[0], inp[1], inp[2], "ro", zorder=3)
-            ax.axes.set_xlim3d(-0.1, 1.1)
-            ax.axes.set_ylim3d(-0.1, 1.1)
-            ax.axes.set_zlim3d(-0.1, 1.1)
-            #  plt.show()
-        else:
-            raise NotImplementedError(f"plot_foliation not implemented for {self.dataset_name} dataset.")
-
+        raise NotImplementedError(f"plot_foliation not implemented for {self.dataset_name} dataset.")
 
     def batch_compute_leaf(self, init_points, transverse=False):
         """Compute the leaf going through the point
@@ -563,6 +511,38 @@ class XORExp(Experiment):
 
         return super().init_networks()
 
+    def plot_foliation(self,
+                       transverse: bool=True,
+                       nleaves: Optional[int]=None,
+                       ) -> None:
+        """Plots the kernel / transverse foliation associated to
+        the Fisher Information Matrix.
+
+        :transverse: (bool) if True, plot the transverse foliation, else plot the kernel foliation.
+        :returns: None
+
+        """
+        if nleaves is None:
+            nleaves = self.num_samples
+        input_space_train = self.input_space['train']
+        indices = torch.randperm(len(input_space_train))[:nleaves]
+        init_points = torch.stack([input_space_train[idx][0] for idx in indices])
+        init_points = init_points.to(self.device).to(self.dtype)
+        #  scale = 0.1
+        #  xs = torch.arange(0, 1.5 + scale, scale, dtype=self.dtype, device=self.device)
+        #  init_points = torch.cartesian_prod(xs, xs)
+        print("Plotting the leaves...")
+        leaves = self.batch_compute_leaf(init_points, transverse=transverse)
+
+        for leaf in tqdm(leaves):
+            plt.plot(leaf[:, 0], leaf[:, 1], color='blue', linewidth=0.2, zorder=1)
+
+        if self.dataset_name == "XOR":
+            plt.plot([0, 1], [0, 1], "ro", zorder=3)
+            plt.plot([0, 1], [1, 0], "go", zorder=3)
+        plt.xlim([-0.1, 1.1])
+        plt.ylim([-0.1, 1.1])
+
 
 class XOR3DExp(Experiment):
 
@@ -614,6 +594,139 @@ class XOR3DExp(Experiment):
 
         return super().init_networks()
 
+    def plot_foliation(self,
+                       transverse: bool=True,
+                       nleaves: Optional[int]=None,
+                       ) -> None:
+        """Plots the kernel / transverse foliation associated to
+        the Fisher Information Matrix.
+
+        :transverse: (bool) if True, plot the transverse foliation, else plot the kernel foliation.
+        :returns: None
+
+        """
+        if nleaves is None:
+            nleaves = self.num_samples
+        input_space_train = self.input_space['train']
+        indices = torch.randperm(len(input_space_train))[:nleaves]
+        init_points = torch.stack([input_space_train[idx][0] for idx in indices])
+        init_points = init_points.to(self.device).to(self.dtype)
+        #  scale = 0.1
+        #  xs = torch.arange(0, 1.5 + scale, scale, dtype=self.dtype, device=self.device)
+        #  init_points = torch.cartesian_prod(xs, xs)
+        print("Plotting the leaves...")
+        leaves = self.batch_compute_leaf(init_points, transverse=transverse)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        for leaf in tqdm(leaves):
+            if transverse:
+                ax.plot(leaf[:, 0], leaf[:, 1], leaf[:, 2], color='blue', linewidth=0.2, zorder=1)
+            else:
+                X, Y = torch.meshgrid(leaf[:, 0], leaf[:, 1])
+                Z = leaf[:, 2].unsqueeze(0).expand(leaf.shape[0], -1)
+                ax.plot_wireframe(X, Y, Z, color='blue', zorder=1, rcount=10, ccount=10)
+
+        for (inp, label) in Xor3dDataset(test=True, discrete=True, nsample=8):
+            if label == 1:
+                ax.plot(inp[0], inp[1], inp[2], "go", zorder=3)
+            if label == 0:
+                ax.plot(inp[0], inp[1], inp[2], "ro", zorder=3)
+        ax.axes.set_xlim3d(-0.1, 1.1)
+        ax.axes.set_ylim3d(-0.1, 1.1)
+        ax.axes.set_zlim3d(-0.1, 1.1)
+        #  plt.show()
+
+
+
+class CircleExp(Experiment):
+    def __init__(self, 
+                 non_linearity: str,
+                 adversarial_budget: float,
+                 dtype: torch.dtype,
+                 device: torch.DeviceObjType,
+                 num_samples: int,
+                 pool: str,
+                 random: bool,
+                 restrict_to_class: Optional[int] = None,
+                 input_space: Optional[Dict[str, datasets.VisionDataset]] = None,
+                 checkpoint_path: Optional[str] = None,
+                 network: Optional[nn.Module] = None,
+                 network_score: Optional[nn.Module] = None,
+                 nclasses: int=2,
+                 ):
+        self.nclasses = nclasses
+        super().__init__(f"Circle{nclasses}", 
+                         non_linearity,
+                         adversarial_budget,
+                         dtype,
+                         device,
+                         num_samples,
+                         pool,
+                         random,
+                         restrict_to_class,
+                         input_space,
+                         checkpoint_path,
+                         network,
+                         network_score)
+
+    def init_checkpoint_path(self):
+        self.checkpoint_path = f'./checkpoint/circle_net_c{self.nclasses}_{self.non_linearity.lower()}_30.pt'
+
+    def init_input_space(self, root: str = 'data', download: bool = True):
+        self.input_space = {x: CircleDataset(
+            nsample=10000,
+            test=(x=='val'),
+            nclasses=self.nclasses,
+        ) for x in ['train', 'val']
+        }
+        return super().init_input_space(root, download)
+
+    def init_networks(self):
+        self.network = circle_net(self.checkpoint_path, non_linearity=self.nl_function, nclasses=self.nclasses)
+        self.network_score = circle_net(self.checkpoint_path, score=True, non_linearity=self.nl_function, nclasses=self.nclasses)
+
+        return super().init_networks()
+
+    def plot_foliation(self,
+                       transverse: bool=True,
+                       nleaves: Optional[int]=None,
+                       ) -> None:
+        """Plots the kernel / transverse foliation associated to
+        the Fisher Information Matrix.
+
+        :transverse: (bool) if True, plot the transverse foliation, else plot the kernel foliation.
+        :returns: None
+
+        """
+        if nleaves is None:
+            nleaves = self.num_samples
+        input_space_train = self.input_space['train']
+        # indices = torch.randperm(len(input_space_train))[:nleaves]
+        indices = torch.linspace(0, len(input_space_train), nleaves + 1).int()[:-1]
+        data_points = torch.stack([input_space_train[idx][0] for idx in indices])
+        data_classes = torch.stack([input_space_train[idx][1] for idx in indices])
+        init_points = torch.rand_like(data_points)
+        init_points = init_points.to(self.device).to(self.dtype)
+        #  scale = 0.1
+        #  xs = torch.arange(0, 1.5 + scale, scale, dtype=self.dtype, device=self.device)
+        #  init_points = torch.cartesian_prod(xs, xs)
+        print("Plotting the leaves...")
+        leaves = self.batch_compute_leaf(init_points, transverse=transverse)
+
+        for leaf in tqdm(leaves):
+            plt.plot(leaf[:, 0], leaf[:, 1], color='blue', linewidth=0.2, zorder=1)
+
+        print("...plotting the data points...")
+        cmap = cm.get_cmap('jet', self.nclasses)  
+        # plt.colorbar(ticks=range(self.nclasses + 2))
+        scamap = cm.ScalarMappable(norm=colors.Normalize(vmin=-0.5, vmax=self.nclasses-0.5), cmap=cmap)
+        # plt.colorbar(scamap, ticks=range(self.nclasses))
+        for p, c in zip(data_points, data_classes):
+            plt.plot(p[0], p[1], "o", color=scamap.to_rgba(c))
+
+        plt.xlim([-1.2, 1.2])
+        plt.ylim([-1.2, 1.2])
 
 
 class LettersExp(Experiment):
@@ -940,4 +1053,6 @@ implemented_experiment_dict = {
     "FashionMNIST": FashionMNISTExp,
     "Noise": NoiseExp,
     "Adversarial": AdversarialExp,
+    "Circle2": partial(CircleExp, nclasses=2),
+    "Circle6": partial(CircleExp, nclasses=6),
 }

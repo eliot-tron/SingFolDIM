@@ -3,23 +3,14 @@ from copy import deepcopy
 from datetime import datetime
 from os import makedirs, path
 import random
-import time
 from matplotlib import pyplot as plt
 import numpy as np
 
 import torch
-from torch import nn
 from tqdm import tqdm
-from geometry import GeometricModel
 from experiment import *
 
-import mnist_networks, cifar10_networks
 from transfer_learning import TransferLearning
-
-from torchvision import datasets, transforms
-from xor_datasets import XorDataset
-from xor_networks import xor_net
-import plot
 
 
 if __name__ == "__main__":
@@ -31,7 +22,7 @@ if __name__ == "__main__":
         type=str,
         nargs='+',
         default="MNIST",
-        choices=['MNIST', 'Letters', 'FashionMNIST', 'KMNIST', 'QMNIST', 'CIFARMNIST', 'XOR', 'XOR3D', 'CIFAR10', 'Noise', 'Adversarial'],
+        choices=['MNIST', 'Letters', 'FashionMNIST', 'KMNIST', 'QMNIST', 'CIFARMNIST', 'XOR', 'XOR3D', 'CIFAR10', 'Circle2', 'Circle6', 'Noise', 'Adversarial'],
         metavar='name',
         help="Dataset name to be used.",
     )

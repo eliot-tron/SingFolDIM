@@ -165,6 +165,19 @@ if __name__ == "__main__":
         default="checkpoint",
         help="Model checkpoint output directory",
     )
+    parser.add_argument(
+        "--nl",
+        type=str,
+        metavar='f',
+        default="ReLU",
+        choices=['Sigmoid', 'ReLU', 'GELU'],
+        help="Non linearity used by the network."
+    )
+    parser.add_argument(
+        "--maxpool",
+        action="store_true",
+        help="Use the legacy architecture with maxpool2D instead of avgpool2d."
+    )
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -176,7 +189,16 @@ if __name__ == "__main__":
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # model = medium_cnn(num_classes=27)  # 26 letters and 1 N/A
-    model = medium_cnn(num_classes=10, non_linearity=nn.ReLU())
+    non_linearity = args.nl
+    if non_linearity == 'Sigmoid':
+        non_linearity_function = nn.Sigmoid()
+    elif non_linearity == 'ReLU':
+        non_linearity_function = nn.ReLU()
+    elif non_linearity == 'GELU':
+        non_linearity_function = nn.GELU()
+    else:
+        raise NotImplementedError
+    model = medium_cnn(num_classes=10, non_linearity=non_linearity_function, maxpool=args.maxpool)
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
     train_loader = mnist_loader(args.batch_size, train=True)
@@ -193,7 +215,7 @@ if __name__ == "__main__":
         global_ranks.append(epoch_ranks)
         global_traces.append(epoch_traces)
         test(model, test_loader)
-        torch.save(model.state_dict(), output_dir / f"mnist_medium_cnn_{epoch + 1:02d}.pt")
+        torch.save(model.state_dict(), output_dir / f"mnist_medium_cnn_{epoch + 1:02d}_{'maxpool' if args.maxpool else 'avgpool'}_{non_linearity}.pt")
 
     global_steps = torch.cat(global_steps, dim=0)
     global_ranks = torch.cat(global_ranks, dim=1)
