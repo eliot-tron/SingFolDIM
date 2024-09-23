@@ -129,6 +129,6 @@ if __name__ == "__main__":
         )
         global_steps.append(epoch_steps + epoch * len(train_loader))
         test(model, test_loader)
-        torch.save(model.state_dict(), output_dir / f"circle_net_c{nclasses}_{args.activation.lower()}_{epoch + 1:02d}.pt")
+        torch.save(model.state_dict(), output_dir / f"deep_circle_net_c{nclasses}_{args.activation.lower()}_{epoch + 1:02d}.pt")
 
     global_steps = torch.cat(global_steps, dim=0)

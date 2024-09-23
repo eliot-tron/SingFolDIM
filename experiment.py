@@ -671,7 +671,7 @@ class CircleExp(Experiment):
                          network_score)
 
     def init_checkpoint_path(self):
-        self.checkpoint_path = f'./checkpoint/circle_net_c{self.nclasses}_{self.non_linearity.lower()}_30.pt'
+        self.checkpoint_path = f'./checkpoint/deep_circle_net_c{self.nclasses}_{self.non_linearity.lower()}_05.pt'
 
     def init_input_space(self, root: str = 'data', download: bool = True):
         self.input_space = {x: CircleDataset(
