@@ -85,6 +85,10 @@ class Experiment(object):
 
     def get_output_dimension(self):
         return self.network(self.input_points[0].unsqueeze(0)).shape[-1]
+
+
+    def get_input_dimension(self):
+        return len(self.input_points[0].flatten())
     
     def get_number_of_classes(self):
         return len(self.input_space['train'].classes)
@@ -257,8 +261,11 @@ class Experiment(object):
 
         number_of_batch = local_data_matrix.shape[0]
 
+
         if known_rank is None:
             known_rank = min(local_data_matrix.shape[1:])
+        else:
+            known_rank = min(known_rank, min(local_data_matrix.shape[1:]) - 1)
             
         if face_color is None:
             face_color = 'white'
@@ -287,6 +294,7 @@ class Experiment(object):
         # print(f"All close: {torch.allclose(topk_eigenvalues, selected_eigenvalues[...,:known_rank])}")
         #  max_eigenvalues = eigenvalues.max(dim=-1, keepdims=True).values
         #  eigenvalues = eigenvalues / max_eigenvalues
+        selected_eigenvalues[selected_eigenvalues < 1e-23] = 1e-23  # to solve problem with log(0)
         oredered_list_eigenvalues = list(selected_eigenvalues.log10().movedim(-1, 0).detach().cpu())  # TODO: log after or before mean? <15-04-24, eliot> #
 
         torch.save(oredered_list_eigenvalues, path.join(output_dir, f"experiment_{self.dataset_name}_orderd_list_eigenvalues.pt"))
@@ -340,7 +348,7 @@ class Experiment(object):
             if not transverse:
                 e = torch.stack((e[:,1], -e[:,0])).movedim(0, -1)
             norm = torch.linalg.vector_norm(e, ord=2, dim=-1, keepdim=True)
-            e = e / norm
+            e = (e / norm).nan_to_num(0.0)
             return e
 
         leaf = odeint(f, init_points, t=torch.linspace(0, 0.5 * 4, 100 * 4), method="rk4").transpose(0, 1)
@@ -638,7 +646,6 @@ class XOR3DExp(Experiment):
         #  plt.show()
 
 
-
 class CircleExp(Experiment):
     def __init__(self, 
                  non_linearity: str,
@@ -671,7 +678,7 @@ class CircleExp(Experiment):
                          network_score)
 
     def init_checkpoint_path(self):
-        self.checkpoint_path = f'./checkpoint/deep_circle_net_c{self.nclasses}_{self.non_linearity.lower()}_05.pt'
+        self.checkpoint_path = f'./checkpoint/deep_circle_net_c{self.nclasses}_{self.non_linearity.lower()}_30.pt'
 
     def init_input_space(self, root: str = 'data', download: bool = True):
         self.input_space = {x: CircleDataset(
@@ -707,8 +714,8 @@ class CircleExp(Experiment):
         indices = torch.linspace(0, len(input_space_train), nleaves + 1).int()[:-1]
         data_points = torch.stack([input_space_train[idx][0] for idx in indices])
         data_classes = torch.stack([input_space_train[idx][1] for idx in indices])
-        # init_points = torch.rand_like(data_points) * 2 - 1
-        init_points = data_points
+        init_points = torch.rand_like(data_points) * 2 - 1
+        # init_points = data_points
         init_points = init_points.to(self.device).to(self.dtype)
         #  scale = 0.1
         #  xs = torch.arange(0, 1.5 + scale, scale, dtype=self.dtype, device=self.device)
@@ -716,7 +723,7 @@ class CircleExp(Experiment):
         print("Plotting the leaves...")
         leaves = self.batch_compute_leaf(init_points, transverse=transverse)
 
-        for leaf in tqdm(leaves):
+        for leaf in tqdm(leaves.cpu()):
             plt.plot(leaf[:, 0], leaf[:, 1], color='blue', linewidth=0.2, zorder=1)
 
         print("...plotting the data points...")

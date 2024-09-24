@@ -170,6 +170,8 @@ if __name__ == "__main__":
             base_experiment = experiment_list[0]
 
     base_output_dimension = base_experiment.get_output_dimension()
+    base_input_dimension = base_experiment.get_input_dimension()
+    known_rank = min(base_output_dimension - 1, base_input_dimension - 1)
     
     nb_experiments = len(experiment_list)
 
@@ -181,10 +183,10 @@ if __name__ == "__main__":
         colors = plt.cm.rainbow(torch.linspace(0, 1, nb_experiments + 1))[1:]
         bp_list = []
         for i, experiment in enumerate(tqdm(experiment_list)):
-            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=base_output_dimension - 1, face_color=colors[i], positions=torch.arange(0, base_output_dimension) + (i / nb_experiments), box_width=1 / (nb_experiments + 1), output_dir=savedirectory)
+            bp = experiment.plot_FIM_eigenvalues(axes, known_rank=known_rank, face_color=colors[i], positions=torch.arange(0, known_rank + 1) + (i / nb_experiments), box_width=1 / (nb_experiments + 1), output_dir=savedirectory)
             bp_list.append(bp)
         #  axes.set_yscale('log')
-        axes.set_xticks(torch.arange(base_output_dimension) + ((nb_experiments - 1) / nb_experiments) / 2, [r"$\lambda_{(" + str(i) + r")}$" for i in range(1, base_output_dimension + 1)])
+        axes.set_xticks(torch.arange(known_rank + 1) + ((nb_experiments - 1) / nb_experiments) / 2, [r"$\lambda_{(" + str(i) + r")}$" for i in range(1, known_rank + 2)])
         axes.set_ylabel(r"$\log_{10}$ of the eigenvalue")
         axes.set_xlabel("FIM's eigenvalues in decreasing order")
         plt.legend([bp['boxes'][0] for bp in bp_list], [exp.dataset_name for exp in experiment_list])
