@@ -30,7 +30,7 @@ class GeometricModel(object):
         eval_point: torch.Tensor,
     ) -> torch.Tensor:
 
-        if len(eval_point.shape) == 3:  # TODO: trouver un truc plus propre
+        if len(eval_point.shape) == 3:  # TODO: find a better way
             eval_point = eval_point.unsqueeze(0)
         p = torch.exp(self.network(eval_point))
         if self.verbose: print(f"proba: {p}")
@@ -41,7 +41,7 @@ class GeometricModel(object):
         eval_point: torch.Tensor,
     ) -> torch.Tensor:
         
-        if len(eval_point.shape) == 3:  # TODO: trouver un truc plus propre
+        if len(eval_point.shape) == 3:  # TODO: find a better way
             eval_point = eval_point.unsqueeze(0)
         
         return self.network_score(eval_point)
@@ -93,7 +93,7 @@ class GeometricModel(object):
         if self.verbose:
             print(f"shape of eval_point = {eval_point.shape}")
             print(f"shape of output = {self.proba(eval_point).shape}")
-        j = jacobian(self.proba, eval_point, create_graph=create_graph) # TODO: vérifier dans le cadre non batched
+        j = jacobian(self.proba, eval_point, create_graph=create_graph) # TODO: what happens if not batched?
         if self.verbose: print(f"shape of j before reshape = {j.shape}")
         j = j.sum(2)  # 2 is the batch dimension for dx when the output of the net is (bs, c) and because there is no interactions between batches in the derivative we can sum over this dimension to retrieve the only non zero components.
         j = j.flatten(2)
@@ -359,7 +359,7 @@ class GeometricModel(object):
         G = self.local_data_matrix(eval_point)
         B = J_G.permute(0, 3, 1, 2) + J_G.permute(0, 1, 3, 2) - J_G.permute(0, 3, 2, 1)
         # G_inv = torch.linalg.pinv(G.to(torch.double), hermitian=True).to(self.dtype) # input need to be in double
-        # TODO garde fou pour quand G devient nulle, ou que G_inv diverge
+        # TODO what to do when G becomes zero, or when G_inv diverges?
         try:
             # G shape: (bs, l, k) | B shape: (bs, i, l, j)
             result_lstsq = torch.linalg.lstsq(G.unsqueeze(-3).expand((*G.shape[:-2], B.shape[-3], *G.shape[-2:])), B, rcond=1e-7)

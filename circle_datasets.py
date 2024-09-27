@@ -17,7 +17,7 @@ class CircleDataset(data.Dataset):
         # if test:
         #     self.nsample //= 10
         t = [(torch.rand((self.nsample // nclasses)) + k) / nclasses for k in range(nclasses)]
-        self.input_vars = torch.cat([  # TODO: verify cat in the right way to have (nsample, 2)
+        self.input_vars = torch.cat([
             torch.stack(
                 (torch.cos(2 * torch.pi * t_k),
                  torch.sin(2 * torch.pi * t_k)),

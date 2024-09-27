@@ -130,7 +130,7 @@ if __name__ == "__main__":
     base_experiment = None
     for (dataset, non_linearity) in zip(dataset_names, non_linearities):
         print(dataset, non_linearity)
-        # TODO: faire un main_network <15-04-24, eliot> #
+        # TODO: create main_network #
         if dataset == 'Adversarial':
             adversarial_budget = 2
         
@@ -225,7 +225,7 @@ if __name__ == "__main__":
         plt.savefig(saving_path, transparent=True, dpi=None)
         
     elif task == 'foliation':
-        transverse = True
+        transverse = False
         for experiment in tqdm(experiment_list):
             experiment.plot_foliation(transverse=transverse)
             saving_path = savedirectory + f"{'transverse' if transverse else 'kernel'}_foliations.pdf"

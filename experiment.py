@@ -273,7 +273,7 @@ class Experiment(object):
         if positions is None:
             positions = range(known_rank + 1)
 
-        # TODO: implement a faster computation of the topk eigenvalues <15-04-24, eliot> #
+        # TODO: implement a faster computation of the topk eigenvalues <15-04-24> #
         if singular_values:
             eigenvalues = torch.linalg.svdvals(local_data_matrix)
         else:
@@ -295,7 +295,7 @@ class Experiment(object):
         #  max_eigenvalues = eigenvalues.max(dim=-1, keepdims=True).values
         #  eigenvalues = eigenvalues / max_eigenvalues
         selected_eigenvalues[selected_eigenvalues < 1e-23] = 1e-23  # to solve problem with log(0)
-        oredered_list_eigenvalues = list(selected_eigenvalues.log10().movedim(-1, 0).detach().cpu())  # TODO: log after or before mean? <15-04-24, eliot> #
+        oredered_list_eigenvalues = list(selected_eigenvalues.log10().movedim(-1, 0).detach().cpu())  # TODO: log after or before mean? <15-04-24> #
 
         torch.save(oredered_list_eigenvalues, path.join(output_dir, f"experiment_{self.dataset_name}_orderd_list_eigenvalues.pt"))
 

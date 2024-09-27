@@ -16,7 +16,7 @@ class TransferLearning(object):
     """
 
     def __init__(self,
-                 base_experiment: Experiment, # # TODO: gérer les args <18-04-24, eliot> #
+                 base_experiment: Experiment, # TODO: use args <18-04-24> #
                  target_experiment: Experiment,
                  ):
         """Initialize the transfer learning class.
@@ -93,7 +93,7 @@ class TransferLearning(object):
         if self.new_model is None:
             self.init_new_model(fix_other_layers=fix_other_layers)
 
-        # if isinstance(self.new_model, nn.DataParallel): #TODO: mieux gérer ça
+        # if isinstance(self.new_model, nn.DataParallel): #TODO: do better
         #     model = self.new_model.module
         # else:
         #     model = self.new_model
