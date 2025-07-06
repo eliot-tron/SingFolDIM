@@ -114,6 +114,8 @@ class Experiment(object):
             elif self.non_linearity == 'GELU':
                 if self.dataset_name not in ['XOR', 'MNIST']: print('WARNING: GELU is (for now) only implemented with the weights of the ReLU network.')
                 self.nl_function = nn.GELU()
+            elif self.non_linearity == 'LeakyReLU':
+                self.nl_function = nn.LeakyReLU()
 
     def init_checkpoint_path(self):
         """Initializes the value of self.checkpoint_path based on self.dataset_name and self.non_linearity."""
@@ -256,8 +258,9 @@ class Experiment(object):
 
         if not path.isdir(output_dir):
             makedirs(output_dir)
-       
-        local_data_matrix = self.geo_model.local_data_matrix(self.input_points)
+
+        with torch.no_grad():
+            local_data_matrix = self.geo_model.local_data_matrix(self.input_points)
 
         number_of_batch = local_data_matrix.shape[0]
 
@@ -355,6 +358,96 @@ class Experiment(object):
         leaf_back = odeint(f, init_points, t=-torch.linspace(0, 0.5 * 4, 100 * 4), method="rk4").transpose(0, 1)
         
         return torch.cat((leaf_back.flip(1)[:,:-1], leaf), dim=1)
+
+    def plot_dataset(self,
+                     output_dir: Union[str, Path]='output/',
+                     ):
+        """Plot samples of the dataset."""
+        plt.rcParams.update({'font.size': 22})
+        d = self.get_input_dimension()
+        print(self.input_space['val'])
+        list_labels = self.input_space['val'].classes
+        n_classes = self.get_number_of_classes()
+        colors = plt.cm.plasma(torch.linspace(0, 1, n_classes))
+        colors_dict = dict(zip(list_labels, colors))
+        if d <= 3:
+            n_to_plot = self.num_samples
+            indices = torch.randperm(len(self.input_space['val']))[:n_to_plot]
+            input_points = torch.stack([self.input_space['val'].data[idx] for idx in indices])
+            labels = torch.stack([self.input_space['val'].targets[idx] for idx in indices])
+            # input_points = self.input_space['val'].data[:n_to_plot]
+            # labels = self.input_space['val'].targets[:n_to_plot]
+            if d <= 1:
+                raise NotImplementedError
+            elif d == 2:
+                fig, axs = plt.subplots(1, 1)
+                for point, label in zip(input_points, labels):
+                    axs.scatter(point[0], point[1], c=colors_dict[list_labels[label.item()]])
+                axs.set_aspect('equal', 'box')
+                fig.tight_layout()
+                saving_path = f"{output_dir}Dataset_{self.dataset_name}.pdf"
+                plt.savefig(saving_path, transparent=True, dpi=None)
+                # plt.show()
+            elif d == 3:
+                fig, axs = plt.subplots(1, 1)
+                for point, label in zip(input_points, labels):
+                    plt.scatter(point[0], point[1], point[3], c=colors_dict[list_labels[label.item()]])
+                axs.set_aspect('equal', 'box')
+                fig.tight_layout()
+                saving_path = f"{output_dir}Dataset_{self.dataset_name}.pdf"
+                plt.savefig(saving_path, transparent=True, dpi=None)
+                # plt.show()
+        else:
+            n_to_plot=n_classes
+            print(self.input_space['val'])
+            input_points, labels = self.input_space['val'].data, self.input_space['val'].targets
+            print(labels)
+            dict_to_plot = {}
+            for point, target in zip(tqdm(input_points), labels):
+                # if target not in dict_to_plot.keys():
+                if list_labels[target] not in dict_to_plot.keys():
+                    dict_to_plot[list_labels[target]] = point
+            # for label in list_labels:
+            #     indices_of_class = (list_labels[labels] == label)
+            #     # print(f"idx {indices_of_class}, labels {labels}, label {label}")
+            #     # print(input_points[indices_of_class])
+            #     dict_to_plot.append(input_points[indices_of_class])
+
+            from math import floor, sqrt, ceil
+            n_row, n_col = floor(sqrt(n_to_plot)) , ceil(sqrt(n_to_plot))
+            figure, axes = plt.subplots(n_row, n_col, figsize=(n_col*3, n_row*3), squeeze=False)
+
+            for index, matrix, title in zip(range(n_to_plot), dict_to_plot.values(), dict_to_plot.keys()):
+                row = index // n_col
+                col = index % n_col
+                if self.dataset_name == 'Letters':
+                    matrix = matrix.T
+                if len(matrix.squeeze().shape) == 2:
+                    matrix_subplot = axes[row, col].imshow(matrix.squeeze(), cmap='gray_r')
+                else:
+                    matrix_subplot = axes[row, col].imshow(matrix.squeeze())
+
+                # axes[row, col].tick_params(left = False, right = False, top=False, labeltop=False, labelleft = False , labelbottom = False, bottom = False)
+                axes[row, col].set_title(title)
+            
+            for axes_to_remove in range(n_row*n_col):
+                row = axes_to_remove // n_col
+                col = axes_to_remove % n_col
+                axes[row, col].axis("off")
+
+            figure.tight_layout()
+            saving_path = f"{output_dir}Dataset_{self.dataset_name}.pdf"
+            plt.savefig(saving_path, transparent=True, dpi=None)
+            # plt.show()
+            # saving_path = f"{output_dir}"
+            # if number_of_batch > 1:
+            #     saving_path = f"{saving_path}batch_{index_batch}_"
+            # saving_path = f"{saving_path}{output_name}.pdf"
+            #
+            # plt.savefig(saving_path, transparent=True, dpi=None)
+
+
+
 
 
 class MNISTExp(Experiment):
@@ -503,6 +596,8 @@ class XORExp(Experiment):
             self.checkpoint_path = './checkpoint/xor_net_relu_30.pt'
         elif self.non_linearity == 'GELU':
             self.checkpoint_path = './checkpoint/xor_net_gelu_acc100.pt'
+        elif self.non_linearity == 'LeakyReLU':
+            self.checkpoint_path = './checkpoint/xor_net_leakyrelu_30.pt'
 
     def init_input_space(self, root: str = 'data', download: bool = True):
         self.input_space = {x: XorDataset(
@@ -542,7 +637,7 @@ class XORExp(Experiment):
         print("Plotting the leaves...")
         leaves = self.batch_compute_leaf(init_points, transverse=transverse)
 
-        for leaf in tqdm(leaves):
+        for leaf in tqdm(leaves.cpu()):
             plt.plot(leaf[:, 0], leaf[:, 1], color='blue', linewidth=0.2, zorder=1)
 
         if self.dataset_name == "XOR":
@@ -627,7 +722,7 @@ class XOR3DExp(Experiment):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
 
-        for leaf in tqdm(leaves):
+        for leaf in tqdm(leaves.cpu()):
             if transverse:
                 ax.plot(leaf[:, 0], leaf[:, 1], leaf[:, 2], color='blue', linewidth=0.2, zorder=1)
             else:

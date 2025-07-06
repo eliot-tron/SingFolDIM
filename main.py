@@ -14,8 +14,9 @@ from transfer_learning import TransferLearning
 
 
 if __name__ == "__main__":
+    torch.set_num_threads(8)
     parser = argparse.ArgumentParser(
-        description="CIDRE: Comparison based on Information between Datasets with degenerate Riemannian metric's Eigenvalues",
+        description="CIDRE: Compare neural networks based on Information between Datasets with degenerate Riemannian metric's Eigenvalues",
     )
     parser.add_argument(
         "--datasets",
@@ -44,7 +45,7 @@ if __name__ == "__main__":
         "--task",
         type=str,
         default="compare",
-        choices=['compare', 'transfer', 'foliation', 'traces'],
+        choices=['compare', 'transfer', 'foliation', 'traces', 'plotDataset'],
         help="Task."
     )
     parser.add_argument(
@@ -90,6 +91,11 @@ if __name__ == "__main__":
     if args.cpu:
         device = torch.device('cpu')
     print(f"Device: {device}")
+
+
+# enable memory history, which will
+# add tracebacks and event history to snapshots
+    # torch.cuda.memory._record_memory_history(enabled='all', context='all', stacks='all', max_entries=9223372036854775807, device=None)
 
     dataset_names = args.datasets
     num_samples = args.nsample
@@ -185,6 +191,7 @@ if __name__ == "__main__":
         for i, experiment in enumerate(tqdm(experiment_list)):
             bp = experiment.plot_FIM_eigenvalues(axes, known_rank=known_rank, face_color=colors[i], positions=torch.arange(0, known_rank + 1) + (i / nb_experiments), box_width=1 / (nb_experiments + 1), output_dir=savedirectory)
             bp_list.append(bp)
+            del experiment # TODO: comment bien clean la mémoire ?
         #  axes.set_yscale('log')
         axes.set_xticks(torch.arange(known_rank + 1) + ((nb_experiments - 1) / nb_experiments) / 2, [r"$\lambda_{(" + str(i) + r")}$" for i in range(1, known_rank + 2)])
         axes.set_ylabel(r"$\log_{10}$ of the eigenvalue")
@@ -250,6 +257,10 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.savefig(saving_path, transparent=True, dpi=None)
 
+    elif task == 'plotDataset':
+        for experiment in tqdm(experiment_list):
+            experiment.plot_dataset(output_dir=savedirectory)
+
     # elif task == 'rank2D':
     #     plot.save_function_neighborhood(
     #         geo_model,
@@ -293,3 +304,5 @@ if __name__ == "__main__":
         experiment.save_info_to_txt(savedirectory)
 
     print("Done.")
+
+    # torch.cuda.memory._dump_snapshot("my_snapshot.pickle")

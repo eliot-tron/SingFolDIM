@@ -13,28 +13,30 @@ class XorDataset(data.Dataset):
         data.Dataset.__init__(self)
         self.nsample = nsample
         self.test = test
-        # self.input_vars = torch.rand(self.nsample, 2)
+        self.classes = ["0", "1"]
+        # self.data = torch.rand(self.nsample, 2)
         a, b = range
         if test:
             if discrete:
-                self.input_vars = torch.tensor(
+                self.data = torch.tensor(
                     [[1, 1], [1, 0], [0, 1], [0, 0]], dtype=torch.float)
                 self.nsample = 4
             else:
                 self.nsample //= 10
-                self.input_vars = torch.rand((self.nsample, 2)) * (b - a) + a
+                self.data = torch.rand((self.nsample, 2)) * (b - a) + a
         else:
             if discrete:
-                self.input_vars = torch.bernoulli(
+                self.data = torch.bernoulli(
                     torch.ones((self.nsample, 2)) * 0.5)
             else:
-                self.input_vars = torch.rand((self.nsample, 2)) * (b - a) + a
+                self.data = torch.rand((self.nsample, 2)) * (b - a) + a
+        self.targets = torch.logical_xor(torch.round(self.data)[...,0], torch.round(self.data)[...,1]).int()
 
     def __getitem__(self, index):
         """Get a data point."""
         assert index < self.nsample, "The index must be less than the number of samples."
-        inp = self.input_vars[index]
-        return inp, torch.logical_xor(*torch.round(inp)).type(torch.LongTensor)
+        inp, lab = self.data[index], self.data[index]
+        return inp, lab
 
     def __len__(self):
         """Return len of the dataset."""
@@ -52,19 +54,22 @@ class OrDataset(data.Dataset):
         data.Dataset.__init__(self)
         self.nsample = nsample
         self.test = test
-        # self.input_vars = torch.rand(self.nsample, 2)
+        self.classes = ["0", "1"]
+        # self.data = torch.rand(self.nsample, 2)
         if test:
-            self.input_vars = torch.tensor([[1, 1], [1, 0], [0, 1], [0, 0]], dtype=torch.float)
+            self.data = torch.tensor([[1, 1], [1, 0], [0, 1], [0, 0]], dtype=torch.float)
             self.nsample = 4
         else:
-            self.input_vars = torch.bernoulli(
+            self.data = torch.bernoulli(
                 torch.ones((self.nsample, 2)) * 0.5)
+        # self.targets = torch.logical_or(*torch.round(self.data)).type(torch.float)
+        self.targets = torch.logical_or(torch.round(self.data)[...,0], torch.round(self.data)[...,1]).int()
 
     def __getitem__(self, index):
         """Get a data point."""
         assert index < self.nsample, "The index must be less than the number of samples."
-        inp = self.input_vars[index]
-        return inp, torch.logical_or(*torch.round(inp)).type(torch.float)
+        inp, lab = self.data[index], self.data[index]
+        return inp, lab
 
     def __len__(self):
         """Return len of the dataset."""

@@ -14,10 +14,11 @@ class CircleDataset(data.Dataset):
         print(f"Warning: you asked for {nsample} samples with {nclasses} classes.\nTo have the same amount of samples per class, the new number of samples is {self.nsample}.")
         self.test = test
         self.nclasses = nclasses
+        self.classes = [str(i) for i in range(nclasses)]
         # if test:
         #     self.nsample //= 10
         t = [(torch.rand((self.nsample // nclasses)) + k) / nclasses for k in range(nclasses)]
-        self.input_vars = torch.cat([
+        self.data = torch.cat([
             torch.stack(
                 (torch.cos(2 * torch.pi * t_k),
                  torch.sin(2 * torch.pi * t_k)),
@@ -25,15 +26,19 @@ class CircleDataset(data.Dataset):
             for t_k in t], dim=0)
 
         if noise:
-            for i, p in enumerate(self.input_vars):
-                self.input_vars[i] = p * (torch.randn(1) * 0.01 + 1)
+            for i, p in enumerate(self.data):
+                self.data[i] = p * (torch.randn(1) * 0.01 + 1)
+
+        self.targets = torch.range(0, self.nsample) // (self.nsample // self.nclasses)
+        self.targets = self.targets.int()
     
 
     def __getitem__(self, index):
         """Get a data point."""
         assert index <= self.nsample, "The index must be less than the number of samples."
-        inp = self.input_vars[index]
-        return inp, index // (self.nsample // self.nclasses)
+        inp = self.data[index]
+        lab = self.targets[index]
+        return inp, lab
 
     def __len__(self):
         """Return len of the dataset."""
