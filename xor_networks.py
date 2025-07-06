@@ -11,7 +11,7 @@ def xor_net(checkpoint_path: str = "", hid_size = 8, score: bool=False, non_line
         nn.Linear(2, hid_size),
         non_linearity,
         nn.Linear(hid_size, 2),
-        nn.LogSoftmax(dim=1) if not score else nn.Sequential(),
+        nn.LogSoftmax(dim=-1) if not score else nn.Sequential(),
     )
     # net = net.to(device)
     if checkpoint_path:

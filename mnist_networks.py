@@ -14,7 +14,7 @@ def medium_cnn(checkpoint_path: str = "", num_classes: int=10, score: bool=False
         nn.Linear(64 * (28 - 2 * 2) * (28 - 2 * 2) // (2**2), 128),
         deepcopy(non_linearity),
         nn.Linear(128, num_classes),
-        nn.LogSoftmax(dim=1) if not score else nn.Sequential(),
+        nn.LogSoftmax(dim=-1) if not score else nn.Sequential(),
     )
     # net = net.to(device)
     if checkpoint_path:
