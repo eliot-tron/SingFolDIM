@@ -130,6 +130,9 @@ if __name__ == "__main__":
         non_linearity = nn.ReLU()
     elif args.activation.lower() == "gelu":
         non_linearity = nn.GELU()
+    elif args.activation.lower() == "leakyrelu":
+        non_linearity = nn.LeakyReLU()
+
     if args.old:
         model = xor_net_old(
             non_linearity=non_linearity
