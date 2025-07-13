@@ -6,6 +6,7 @@ from typing import Dict, Optional, Union
 from torch import nn
 import torch
 from matplotlib import cm, colors, pyplot as plt
+from cmcrameri.cm import batlowS
 from tqdm import tqdm
 
 from circle_datasets import CircleDataset
@@ -368,7 +369,8 @@ class Experiment(object):
         print(self.input_space['val'])
         list_labels = self.input_space['val'].classes
         n_classes = self.get_number_of_classes()
-        colors = plt.cm.plasma(torch.linspace(0, 1, n_classes))
+        # colors = batlowS(torch.linspace(0, 1, n_classes))
+        colors = cm.rainbow(torch.linspace(0, 1, n_classes))
         colors_dict = dict(zip(list_labels, colors))
         if d <= 3:
             n_to_plot = self.num_samples
@@ -399,9 +401,12 @@ class Experiment(object):
                 # plt.show()
         else:
             n_to_plot=n_classes
-            print(self.input_space['val'])
-            input_points, labels = self.input_space['val'].data, self.input_space['val'].targets
-            print(labels)
+            # print(self.input_space['val'])
+            indices = torch.randperm(len(self.input_space['val']))
+            input_points = torch.stack([torch.tensor(self.input_space['val'].data[idx]) for idx in indices])
+            labels = torch.stack([torch.tensor(self.input_space['val'].targets[idx]) for idx in indices])
+            # input_points, labels = self.input_space['val'].data, self.input_space['val'].targets
+            # print(labels)
             dict_to_plot = {}
             for point, target in zip(tqdm(input_points), labels):
                 # if target not in dict_to_plot.keys():
@@ -416,7 +421,8 @@ class Experiment(object):
             from math import floor, sqrt, ceil
             n_row, n_col = floor(sqrt(n_to_plot)) , ceil(sqrt(n_to_plot))
             figure, axes = plt.subplots(n_row, n_col, figsize=(n_col*3, n_row*3), squeeze=False)
-
+            
+            dict_to_plot = dict(sorted(dict_to_plot.items()))
             for index, matrix, title in zip(range(n_to_plot), dict_to_plot.values(), dict_to_plot.keys()):
                 row = index // n_col
                 col = index % n_col
